@@ -30,6 +30,8 @@ export interface MetricasCalidad {
   records: number;
   filas: Filas;
   nog_duplicados: number;
+  /** Records cuyo `tender.id` falta o no es un NOG entero. */
+  nog_nulos: number;
   fechas_no_parsean: number;
   fechas_no_parsean_detalle: DetalleFechas;
   sin_departamento: number;
@@ -47,6 +49,8 @@ export interface OpcionesAplanar {
   salidaDir: string;
   /** `YYYY-MM` del archivo de publicación. */
   sourceMonth: string;
+  /** Se llama después de cada tabla. Las pruebas lo usan para fallar a mitad. */
+  despuesDeTabla?: (tabla: Tabla) => void;
 }
 
 const MES = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -79,6 +83,7 @@ export async function aplanarOcds(
           join(opciones.salidaDir, `${tabla}.parquet`),
         ),
       );
+      opciones.despuesDeTabla?.(tabla);
     }
     return armarMetricas(
       await entero(connection, "SELECT count(*)::INTEGER FROM base"),
@@ -97,6 +102,7 @@ function armarMetricas(
   filas: Filas,
   indicadoresParquet: {
     nog_duplicados: number;
+    nog_nulos: number;
     sin_departamento: number;
     sin_items: number;
     vigentes_sin_fecha_cierre: number;
@@ -107,6 +113,7 @@ function armarMetricas(
     records,
     filas,
     nog_duplicados: indicadoresParquet.nog_duplicados,
+    nog_nulos: indicadoresParquet.nog_nulos,
     fechas_no_parsean:
       fechas.date_published +
       fechas.tender_end +
@@ -364,6 +371,7 @@ async function indicadores(
   salidaDir: string,
 ): Promise<{
   nog_duplicados: number;
+  nog_nulos: number;
   sin_departamento: number;
   sin_items: number;
   vigentes_sin_fecha_cierre: number;
@@ -382,6 +390,7 @@ async function indicadores(
             HAVING count(*) > 1
           )
         )::INTEGER AS nog_duplicados,
+        (SELECT count(*) FROM ${tenders} WHERE nog IS NULL)::INTEGER AS nog_nulos,
         (SELECT count(*) FROM ${tenders} WHERE department IS NULL)::INTEGER AS sin_departamento,
         (
           SELECT count(*) FROM ${tenders} t
@@ -397,6 +406,7 @@ async function indicadores(
   );
   return {
     nog_duplicados: exigir(conteos, "nog_duplicados"),
+    nog_nulos: exigir(conteos, "nog_nulos"),
     sin_departamento: exigir(conteos, "sin_departamento"),
     sin_items: exigir(conteos, "sin_items"),
     vigentes_sin_fecha_cierre: exigir(conteos, "vigentes_sin_fecha_cierre"),

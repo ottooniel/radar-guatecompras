@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -82,6 +82,7 @@ it("cuenta una fila de tender por record y reporta la calidad de la muestra", ()
     parties: 752,
   });
   expect(metricas.nog_duplicados).toBe(0);
+  expect(metricas.nog_nulos).toBe(0);
   expect(metricas.fechas_no_parsean).toBe(0);
   expect(metricas.fechas_no_parsean_detalle).toEqual({
     date_published: 0,
@@ -92,6 +93,53 @@ it("cuenta una fila de tender por record y reporta la calidad de la muestra", ()
   expect(metricas.sin_departamento).toBe(5);
   expect(metricas.sin_items).toBe(0);
   expect(metricas.vigentes_sin_fecha_cierre).toBe(37);
+});
+
+it("cuenta los records cuyo tender.id no produce un NOG entero", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "radar-etl-nog-"));
+  const jsonPath = join(dir, "muestra.json");
+  await writeFile(
+    jsonPath,
+    JSON.stringify({
+      records: [
+        {
+          ocid: "ocds-a",
+          compiledRelease: {
+            ocid: "ocds-a",
+            tender: { id: "GT-NOG-10", title: "válido" },
+          },
+        },
+        {
+          ocid: "ocds-b",
+          compiledRelease: {
+            ocid: "ocds-b",
+            tender: { title: "sin id" },
+          },
+        },
+        {
+          ocid: "ocds-c",
+          compiledRelease: {
+            ocid: "ocds-c",
+            tender: { id: "GT-NOG-xx", title: "no entero" },
+          },
+        },
+      ],
+    }),
+  );
+
+  try {
+    const resultado = await aplanarOcds({
+      jsonPath,
+      salidaDir: join(dir, "out"),
+      sourceMonth: "2026-11",
+    });
+
+    expect(resultado.records).toBe(3);
+    expect(resultado.filas.tenders).toBe(3);
+    expect(resultado.nog_nulos).toBe(2);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 it("aplana el NOG 32366973 con departamento, unidad y fecha -06:00", async () => {

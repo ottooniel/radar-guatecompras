@@ -34,13 +34,13 @@ El ETL, desde la raíz del repo. `--desde` y `--hasta` son inclusivos, con mes d
 pnpm etl --desde 2025-12 --hasta 2026-11
 ```
 
-Por cada mes baja el SHA publicado, lo compara con `data/manifest.json` y solo vuelve a bajar y aplanar si cambió. La segunda corrida, con el mismo SHA, no reescribe Parquet. Salidas, ignoradas por git:
+Por cada mes baja el SHA publicado, lo compara con `data/manifest.json` y solo vuelve a bajar y aplanar si cambió. Las cinco tablas se escriben en `mes=MM.tmp-<id>`, al lado del directorio final. Cuando las cinco están listas, el directorio anterior pasa a `mes=MM.old-<id>`, el temporal lo reemplaza con un rename y el `.old` se borra. Si la escritura falla, el mes anterior queda como estaba y el temporal se limpia. `manifest.json` se actualiza después de ese reemplazo. La segunda corrida, con el mismo SHA, no reescribe Parquet. Salidas, ignoradas por git:
 
 - `data/ocds/anio=YYYY/mes=MM/{tenders,items,awards,bids,parties}.parquet`
 - `data/quality/YYYY-MM.json`
 - `data/manifest.json`
 
-`data/quality/YYYY-MM.json` trae filas por tabla, NOG duplicados, fechas que no parsean (y el detalle por campo), procesos sin departamento, sin ítems y vigentes sin fecha de cierre.
+`data/quality/YYYY-MM.json` trae filas por tabla, NOG duplicados, NOG nulos (el `tender.id` falta o no es un entero), fechas que no parsean (y el detalle por campo), procesos sin departamento, sin ítems y vigentes sin fecha de cierre.
 
 No hace falta ninguna variable de entorno. `.env.example` queda vacío a propósito. Los archivos `.env*` reales no se versionan. Las descargas (`data/`, `*.parquet`) tampoco. El fixture de 200 records en `packages/etl/test/fixtures/` sí va en el repo: es un extracto de los datos abiertos de noviembre 2026, bajo la misma licencia CC BY 4.0. El test que pega a la red (`RUN_LIVE=1`) no corre en `pnpm test`.
 
