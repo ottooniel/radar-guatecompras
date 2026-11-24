@@ -41,3 +41,11 @@ export function leerArgumentos(argv: readonly string[]): RangoCli {
   }
   return { desde, hasta };
 }
+
+/** Sin argumentos carga todo lo que haya en disco. */
+export function leerRangoOpcional(argv: readonly string[]): RangoCli | null {
+  if (argv.length === 0) {
+    return null;
+  }
+  return leerArgumentos(argv);
+}

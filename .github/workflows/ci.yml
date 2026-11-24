@@ -10,6 +10,22 @@ jobs:
   verificar:
     name: lint, typecheck, test, build
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgres://radar:radar@localhost:5432/radar
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: radar
+          POSTGRES_PASSWORD: radar
+          POSTGRES_DB: radar
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U radar -d radar"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4

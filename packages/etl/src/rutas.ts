@@ -30,3 +30,7 @@ export function rutaCalidad(raiz: string, clave: string): string {
 export function rutaManifest(raiz: string): string {
   return join(raiz, "data", "manifest.json");
 }
+
+export function rutaParquet(raiz: string, mes: Mes, tabla: string): string {
+  return join(directorioOcds(raiz, mes), `${tabla}.parquet`);
+}

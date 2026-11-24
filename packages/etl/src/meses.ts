@@ -48,3 +48,26 @@ export function mesesDelRango(desde: string, hasta: string): Mes[] {
 function indice(mes: Mes): number {
   return mes.anio * 12 + mes.mes;
 }
+
+/** `cantidad` meses de calendario terminando en el mes UTC de `hoy`, inclusive. */
+export function ultimosMeses(
+  cantidad: number,
+  hoy: Date,
+): { desde: string; hasta: string } {
+  if (!Number.isInteger(cantidad) || cantidad < 1) {
+    throw new Error("La cantidad de meses debe ser un entero positivo");
+  }
+  const hasta = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1));
+  const desde = new Date(
+    Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - (cantidad - 1), 1),
+  );
+  return {
+    desde: formatearMesUtc(desde),
+    hasta: formatearMesUtc(hasta),
+  };
+}
+
+function formatearMesUtc(fecha: Date): string {
+  const mes = String(fecha.getUTCMonth() + 1).padStart(2, "0");
+  return `${fecha.getUTCFullYear()}-${mes}`;
+}

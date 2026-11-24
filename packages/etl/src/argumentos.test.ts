@@ -1,11 +1,18 @@
 import { expect, it } from "vitest";
-import { leerArgumentos } from "./argumentos.js";
+import { leerArgumentos, leerRangoOpcional } from "./argumentos.js";
 
 it("lee desde y hasta", () => {
   expect(leerArgumentos(["--desde", "2025-12", "--hasta", "2026-11"])).toEqual({
     desde: "2025-12",
     hasta: "2026-11",
   });
+});
+
+it("sin argumentos carga todo el disco", () => {
+  expect(leerRangoOpcional([])).toBeNull();
+  expect(
+    leerRangoOpcional(["--desde", "2026-11", "--hasta", "2026-11"]),
+  ).toEqual({ desde: "2026-11", hasta: "2026-11" });
 });
 
 it("exige ambos límites", () => {
