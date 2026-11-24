@@ -20,6 +20,7 @@ export async function descargarSha(mes: Mes): Promise<string> {
       headers: { "user-agent": AGENTE },
       signal: AbortSignal.timeout(60_000),
     });
+    rechazarMesAusente(respuesta, url);
     if (respuesta.status >= 400 && respuesta.status < 500) {
       throw new ErrorPermanente(`HTTP ${respuesta.status} ${url}`);
     }
@@ -41,6 +42,7 @@ export async function descargarZip(mes: Mes, destino: string): Promise<void> {
       headers: { "user-agent": AGENTE },
       signal: AbortSignal.timeout(180_000),
     });
+    rechazarMesAusente(respuesta, url);
     if (respuesta.status >= 400 && respuesta.status < 500) {
       throw new ErrorPermanente(`HTTP ${respuesta.status} ${url}`);
     }
@@ -84,6 +86,24 @@ class ErrorPermanente extends Error {
   constructor(mensaje: string) {
     super(mensaje);
     this.name = "ErrorPermanente";
+  }
+}
+
+/** El mes todavía no está en Guatecompras. No se reintenta. */
+export class MesNoPublicado extends ErrorPermanente {
+  constructor(status: number, url: string) {
+    super(`HTTP ${status} ${url}`);
+    this.name = "MesNoPublicado";
+  }
+}
+
+/**
+ * Un mes sin archivo responde 204 y cuerpo vacío. 404 se trata igual.
+ * Un 200 con SHA inválido, un 4xx distinto o un 5xx no entran aquí.
+ */
+function rechazarMesAusente(respuesta: Response, url: string): void {
+  if (respuesta.status === 204 || respuesta.status === 404) {
+    throw new MesNoPublicado(respuesta.status, url);
   }
 }
 

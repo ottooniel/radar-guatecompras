@@ -6,17 +6,20 @@ import { fileURLToPath } from "node:url";
 import { zipSync } from "fflate";
 import { afterEach, expect, it } from "vitest";
 import { TABLAS } from "./aplanar.js";
+import { urlOcds } from "./descarga.js";
 import type { FuenteOcds } from "./ejecutar.js";
 import { ejecutarEtl } from "./ejecutar.js";
-import type { Mes } from "./meses.js";
+import { parsearMes, ultimosMeses, type Mes } from "./meses.js";
 
 const fixture = fileURLToPath(
   new URL("../test/fixtures/2026-11-muestra.json", import.meta.url),
 );
 
 let raiz = "";
+const fetchOriginal = globalThis.fetch;
 
 afterEach(async () => {
+  globalThis.fetch = fetchOriginal;
   if (raiz !== "") {
     await rm(raiz, { recursive: true, force: true });
     raiz = "";
@@ -157,6 +160,113 @@ it("si la escritura falla a mitad, el mes anterior queda intacto y no deja tempo
   expect(hermanos.filter((nombre) => nombre.includes(".old-"))).toEqual([]);
   expect(await readdir(join(raiz, "data", "tmp"))).toEqual([]);
 });
+
+it("omite el mes nuevo si la descarga responde 404 y sigue con el anterior", async () => {
+  const corrida = await correrMesNuevo(404);
+
+  expect(corrida.procesados).toEqual([corrida.desde]);
+  expect(corrida.omitidos).toEqual([corrida.hasta]);
+  expect(
+    corrida.log.some((linea) =>
+      linea.includes(`Aviso: ${corrida.hasta} aún no publicado, se omite`),
+    ),
+  ).toBe(true);
+});
+
+it("omite el mes nuevo si Guatecompras responde 204 sin cuerpo", async () => {
+  const corrida = await correrMesNuevo(204);
+
+  expect(corrida.procesados).toEqual([corrida.desde]);
+  expect(corrida.omitidos).toEqual([corrida.hasta]);
+  expect(corrida.log.some((linea) => linea.includes("aún no publicado"))).toBe(
+    true,
+  );
+});
+
+it("un 404 de un mes ya vencido sigue rompiendo la corrida", async () => {
+  raiz = await mkdtemp(join(tmpdir(), "radar-etl-404-viejo-"));
+  globalThis.fetch = () => Promise.resolve(new Response("no", { status: 404 }));
+
+  await expect(
+    ejecutarEtl({
+      desde: "2020-01",
+      hasta: "2020-01",
+      raiz,
+      log: () => undefined,
+    }),
+  ).rejects.toThrow(/HTTP 404/);
+});
+
+it("un 500 del mes nuevo sigue rompiendo la corrida", async () => {
+  raiz = await mkdtemp(join(tmpdir(), "radar-etl-500-"));
+  const mes = ultimosMeses(1, new Date()).hasta;
+  globalThis.fetch = () =>
+    Promise.resolve(new Response("fallo", { status: 500 }));
+
+  await expect(
+    ejecutarEtl({
+      desde: mes,
+      hasta: mes,
+      raiz,
+      log: () => undefined,
+    }),
+  ).rejects.toThrow(/HTTP 500/);
+}, 15_000);
+
+async function correrMesNuevo(estado: 404 | 204): Promise<{
+  desde: string;
+  hasta: string;
+  procesados: string[];
+  omitidos: string[];
+  log: string[];
+}> {
+  raiz = await mkdtemp(join(tmpdir(), "radar-etl-ausente-"));
+  const json = new Uint8Array(await readFile(fixture));
+  const sha = createHash("sha256").update(json).digest("hex");
+  const zip = zipSync({ "muestra.json": json });
+  const { desde, hasta } = ultimosMeses(2, new Date());
+  const mesAnterior = parsearMes(desde);
+  const mesNuevo = parsearMes(hasta);
+  const log: string[] = [];
+  globalThis.fetch = (input) => {
+    const url = urlDeFetch(input);
+    if (url === urlOcds("sha", mesNuevo) || url === urlOcds("json", mesNuevo)) {
+      const cuerpo = estado === 204 ? null : "no publicado";
+      return Promise.resolve(new Response(cuerpo, { status: estado }));
+    }
+    if (url === urlOcds("sha", mesAnterior)) {
+      return Promise.resolve(new Response(`${sha}\n`, { status: 200 }));
+    }
+    if (url === urlOcds("json", mesAnterior)) {
+      return Promise.resolve(new Response(zip, { status: 200 }));
+    }
+    return Promise.resolve(new Response(`inesperado ${url}`, { status: 500 }));
+  };
+
+  const resultado = await ejecutarEtl({
+    desde,
+    hasta,
+    raiz,
+    log: (mensaje) => log.push(mensaje),
+  });
+  return {
+    desde,
+    hasta,
+    procesados: resultado.procesados,
+    omitidos: resultado.omitidos,
+    log,
+  };
+}
+
+function urlDeFetch(input: Parameters<typeof fetch>[0]): string {
+  if (typeof input === "string") {
+    return input;
+  }
+  if (input instanceof URL) {
+    return input.toString();
+  }
+  return input.url;
+}
 
 function fuenteDe(
   sha: string,

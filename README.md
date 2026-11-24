@@ -70,7 +70,7 @@ Un tender sin ítems queda con el vector de su título. `unaccent` está en `pac
 
 `buyers` sale de `tenders`: un renglón por NIT. Si el mismo NIT trae varios nombres o departamentos, se queda el de `date_published` más reciente. Si empatan, gana el NOG mayor.
 
-Al final se conservan 12 `source_month`. Los más viejos se borran, y con ellos sus ítems y adjudicaciones.
+Al final se conservan 5 `source_month`. Los más viejos se borran, y con ellos sus ítems y adjudicaciones. Son 5 meses por el límite de 500 MB del plan gratis de Supabase.
 
 La segunda carga, con los mismos Parquet, deja los mismos conteos.
 
@@ -94,16 +94,16 @@ LIMIT 5;
 
 Para ver la hora de Guatemala: `SET TimeZone = 'America/Guatemala'`.
 
-El cron está en `.github/workflows/etl.yml`: todos los días a las 09:30 UTC baja los últimos 3 meses, migra y carga. `DATABASE_URL` es un secreto del repositorio. Si faltan `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` o `R2_BUCKET`, no sube los Parquet y el job sigue. La subida usa solo los meses del manifest, en la ruta final. El workflow de pull requests no usa la base.
+El cron está en `.github/workflows/etl.yml`: todos los días a las 09:30 UTC baja los últimos 3 meses, migra y carga. `DATABASE_URL` es un secreto del repositorio. En Supabase esa cadena es la del Session pooler y termina en `?sslmode=no-verify`. Si faltan `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` o `R2_BUCKET`, no sube los Parquet y el job sigue. La subida usa solo los meses del manifest, en la ruta final. El workflow de pull requests no usa la base.
 
-Para llenar los 12 meses la primera vez, en una máquina con la misma `DATABASE_URL`:
+Para llenar los 5 meses la primera vez, en una máquina con la misma `DATABASE_URL`:
 
 ```bash
-pnpm etl --desde 2025-12 --hasta 2026-11
-pnpm load --desde 2025-12 --hasta 2026-11
+pnpm etl --desde 2026-07 --hasta 2026-11
+pnpm load --desde 2026-07 --hasta 2026-11
 ```
 
-El job diario solo refresca los últimos 3. Los anteriores se quedan hasta que haya más de 12 meses distintos.
+El job diario solo refresca los últimos 3. Los anteriores se quedan hasta que haya más de 5 meses distintos.
 
 ## Modelo tabular
 
