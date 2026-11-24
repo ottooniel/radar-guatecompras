@@ -8,6 +8,9 @@
   },
   "scripts": {
     "etl": "tsx packages/etl/src/cli.ts",
+    "migrate": "tsx packages/etl/src/cli-migrar.ts",
+    "load": "tsx packages/etl/src/cli-cargar.ts",
+    "r2": "tsx packages/etl/src/cli-r2.ts",
     "lint": "eslint . && prettier --check .",
     "typecheck": "tsc --noEmit && pnpm --filter \"./packages/**\" --filter \"./apps/**\" typecheck",
     "test": "vitest run",

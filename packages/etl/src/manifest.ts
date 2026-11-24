@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import { parsearMes, type Mes } from "./meses.js";
 
 export interface EntradaManifest {
   sha256: string;
@@ -38,6 +39,13 @@ export async function guardarManifest(
   );
   await mkdir(dirname(ruta), { recursive: true });
   await writeFile(ruta, `${JSON.stringify({ meses }, null, 2)}\n`, "utf8");
+}
+
+/** Meses publicados, en orden. No mira el disco: un ETL interrumpido puede dejar `mes=MM.tmp-*` y `mes=MM.old-*`. */
+export function mesesPublicados(manifest: Manifest): Mes[] {
+  return Object.keys(manifest.meses)
+    .sort()
+    .map((clave) => parsearMes(clave));
 }
 
 function esManifest(valor: unknown): valor is Manifest {

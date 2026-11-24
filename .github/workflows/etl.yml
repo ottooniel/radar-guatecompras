@@ -1,0 +1,91 @@
+name: ETL
+
+on:
+  schedule:
+    - cron: "30 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: etl-postgres
+  cancel-in-progress: false
+
+jobs:
+  cargar:
+    name: etl y carga
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Exigir DATABASE_URL
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "::error::Falta el secreto DATABASE_URL. Agrégalo en Settings → Secrets and variables → Actions. El CI de pull requests no usa este workflow."
+            exit 1
+          fi
+
+      - name: Rango de los últimos 3 meses
+        id: rango
+        run: |
+          set -euo pipefail
+          linea=$(pnpm exec tsx packages/etl/src/cli-rango.ts)
+          echo "desde=${linea%% *}" >> "$GITHUB_OUTPUT"
+          echo "hasta=${linea##* }" >> "$GITHUB_OUTPUT"
+          echo "Rango ${linea%% *} .. ${linea##* }"
+
+      - name: ETL
+        run: pnpm etl --desde "${{ steps.rango.outputs.desde }}" --hasta "${{ steps.rango.outputs.hasta }}"
+
+      - name: Migrar
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm migrate
+
+      - name: Cargar a Postgres
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm load --desde "${{ steps.rango.outputs.desde }}" --hasta "${{ steps.rango.outputs.hasta }}"
+
+      - name: Comprobar secretos R2
+        id: r2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          if [ -n "${R2_ACCOUNT_ID}" ] && [ -n "${R2_ACCESS_KEY_ID}" ] && [ -n "${R2_SECRET_ACCESS_KEY}" ] && [ -n "${R2_BUCKET}" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "Secretos R2 incompletos: se omite la subida."
+          fi
+
+      - name: Subir Parquet a R2
+        if: steps.r2.outputs.present == 'true'
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: pnpm r2

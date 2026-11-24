@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { mesesDelRango, parsearMes } from "./meses.js";
+import { mesesDelRango, parsearMes, ultimosMeses } from "./meses.js";
 import { directorioOcds } from "./rutas.js";
 
 it("enumera los doce meses del rango pedido", () => {
@@ -24,6 +24,21 @@ it("guarda septiembre con dos dígitos en la ruta y sin cero en el número", () 
 
   expect(mes.mes).toBe(9);
   expect(directorioOcds("/repo", mes)).toBe("/repo/data/ocds/anio=2026/mes=09");
+});
+
+it("toma los últimos tres meses de calendario, también al cruzar el año", () => {
+  expect(ultimosMeses(3, new Date(Date.UTC(2026, 10, 24)))).toEqual({
+    desde: "2026-09",
+    hasta: "2026-11",
+  });
+  expect(ultimosMeses(3, new Date(Date.UTC(2026, 0, 31)))).toEqual({
+    desde: "2025-11",
+    hasta: "2026-01",
+  });
+  expect(ultimosMeses(3, new Date(Date.UTC(2026, 2, 31)))).toEqual({
+    desde: "2026-01",
+    hasta: "2026-03",
+  });
 });
 
 it("rechaza un mes fuera de rango o un desde posterior", () => {

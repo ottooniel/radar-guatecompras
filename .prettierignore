@@ -6,4 +6,5 @@ pnpm-lock.yaml
 **/coverage
 data
 packages/etl/test/fixtures
+packages/etl/migrations/0001_inicial.sql
 **/next-env.d.ts

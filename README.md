@@ -42,7 +42,68 @@ Por cada mes baja el SHA publicado, lo compara con `data/manifest.json` y solo v
 
 `data/quality/YYYY-MM.json` trae filas por tabla, NOG duplicados, fechas que no parsean (y el detalle por campo), procesos sin departamento, sin ítems y vigentes sin fecha de cierre.
 
-No hace falta ninguna variable de entorno. `.env.example` queda vacío a propósito. Los archivos `.env*` reales no se versionan. Las descargas (`data/`, `*.parquet`) tampoco. El fixture de 200 records en `packages/etl/test/fixtures/` sí va en el repo: es un extracto de los datos abiertos de noviembre 2026, bajo la misma licencia CC BY 4.0. El test que pega a la red (`RUN_LIVE=1`) no corre en `pnpm test`.
+El ETL de Parquet no necesita variables de entorno. La carga a Postgres sí: están en `.env.example`. Los archivos `.env*` reales no se versionan. Las descargas (`data/`, `*.parquet`) tampoco. El fixture de 200 records en `packages/etl/test/fixtures/` sí va en el repo: es un extracto de los datos abiertos de noviembre 2026, bajo la misma licencia CC BY 4.0. El test que pega a la red (`RUN_LIVE=1`) no corre en `pnpm test`. Si `DATABASE_URL` apunta a Postgres, `pnpm test` también prueba la carga.
+
+## Postgres
+
+La base local es Postgres 16 con pgvector.
+
+```bash
+docker compose up -d
+cp .env.example .env
+pnpm migrate
+pnpm etl --desde 2026-11 --hasta 2026-11
+pnpm load --desde 2026-11 --hasta 2026-11
+```
+
+`pnpm load` sin fechas carga los meses de `data/manifest.json`. La ruta es exacta: `data/ocds/anio=YYYY/mes=MM/{tenders,items,awards}.parquet`. No lista directorios. Si el ETL se interrumpe pueden quedar `mes=MM.tmp-*` y `mes=MM.old-*`; no se leen. Si falta un archivo del manifest, el comando falla y dice cuál.
+
+Lee esas tres tablas con DuckDB. `bids` y `parties` se quedan en Parquet. Upsert de `tenders` por `nog`. Antes de reinsertar, borra los ítems y las adjudicaciones de ese NOG. `etl_runs` guarda una fila por mes (`rows` es la cantidad de tenders, `sha` sale del manifest) y la reemplaza en la siguiente carga.
+
+`tenders.search` no es una columna generada: no puede armarse leyendo `items`. El cargador la llena después de insertar los ítems:
+
+```sql
+to_tsvector('spanish', unaccent(coalesce(title, '') || ' ' || coalesce(texto_de_items, '')))
+```
+
+Un tender sin ítems queda con el vector de su título. `unaccent` está en `packages/etl/migrations/0002_unaccent.sql`, aparte de `0001_inicial.sql`, que es el esquema obligatorio. `embedding` (`halfvec(512)`) queda `NULL`. El índice HNSW es de una fase posterior. Una recarga no lo pisa.
+
+`buyers` sale de `tenders`: un renglón por NIT. Si el mismo NIT trae varios nombres o departamentos, se queda el de `date_published` más reciente. Si empatan, gana el NOG mayor.
+
+Al final se conservan 12 `source_month`. Los más viejos se borran, y con ellos sus ítems y adjudicaciones.
+
+La segunda carga, con los mismos Parquet, deja los mismos conteos.
+
+Búsqueda recomendada:
+
+```sql
+SELECT nog, title
+FROM tenders
+WHERE search @@ websearch_to_tsquery('spanish', unaccent('diesel'))
+LIMIT 5;
+```
+
+`diesel` no lleva tilde, así que esta otra forma también coincide:
+
+```sql
+SELECT nog, title
+FROM tenders
+WHERE search @@ websearch_to_tsquery('spanish', 'diesel')
+LIMIT 5;
+```
+
+Para ver la hora de Guatemala: `SET TimeZone = 'America/Guatemala'`.
+
+El cron está en `.github/workflows/etl.yml`: todos los días a las 09:30 UTC baja los últimos 3 meses, migra y carga. `DATABASE_URL` es un secreto del repositorio. Si faltan `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` o `R2_BUCKET`, no sube los Parquet y el job sigue. La subida usa solo los meses del manifest, en la ruta final. El workflow de pull requests no usa la base.
+
+Para llenar los 12 meses la primera vez, en una máquina con la misma `DATABASE_URL`:
+
+```bash
+pnpm etl --desde 2025-12 --hasta 2026-11
+pnpm load --desde 2025-12 --hasta 2026-11
+```
+
+El job diario solo refresca los últimos 3. Los anteriores se quedan hasta que haya más de 12 meses distintos.
 
 ## Modelo tabular
 
