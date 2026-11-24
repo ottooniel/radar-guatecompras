@@ -1,52 +1,83 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { formatoFecha } from "@/lib/formato";
+import { formatoDia } from "@/lib/formato";
 
 export function Marco({
   children,
   actualizacion,
+  inicio = false,
 }: {
   children: ReactNode;
   actualizacion: string | null;
+  inicio?: boolean;
 }) {
+  const fecha = actualizacion === null ? null : formatoDia(actualizacion);
   return (
     <>
       <a className="saltar" href="#contenido">
         Saltar al contenido
       </a>
       <header className="barra">
-        <Link className="marca" href="/">
-          Radar Guatecompras
-        </Link>
-        <p className="lema">Procesos de compra pública, citados por NOG</p>
+        <div className="contenedor barra-interior">
+          <Link className="marca" href="/">
+            <Logo />
+            Radar Guatecompras
+          </Link>
+          <nav className="menu" aria-label="Secciones">
+            <Link href="/" aria-current={inicio ? "page" : undefined}>
+              Buscar
+            </Link>
+            <span>Alertas</span>
+            <span>Acerca de los datos</span>
+          </nav>
+        </div>
       </header>
       <div id="contenido">{children}</div>
-      <Pie actualizacion={actualizacion} />
+      <footer className="pie">
+        <div className="contenedor">
+          <p>
+            Fuente: datos abiertos de{" "}
+            <a href="https://ocds.guatecompras.gt/descarga-datos">
+              Guatecompras
+            </a>
+            , licencia{" "}
+            <a href="https://creativecommons.org/licenses/by/4.0/deed.es">
+              CC BY 4.0
+            </a>
+            . Sitio independiente y no oficial.
+          </p>
+          <p>
+            {fecha === null
+              ? "Sin fecha de actualización."
+              : `Datos al ${fecha}.`}{" "}
+            Los indicadores describen datos publicados y no son una acusación.
+          </p>
+        </div>
+      </footer>
     </>
   );
 }
 
-export function Pie({ actualizacion }: { actualizacion: string | null }) {
+function Logo() {
   return (
-    <footer className="pie">
-      <p>
-        Fuente: datos abiertos OCDS de{" "}
-        <a href="https://ocds.guatecompras.gt/descarga-datos">Guatecompras</a>,
-        licencia{" "}
-        <a href="https://creativecommons.org/licenses/by/4.0/deed.es">
-          CC BY 4.0
-        </a>
-        . No es un sitio oficial.
-      </p>
-      <p>
-        {actualizacion === null
-          ? "Fecha de última actualización no disponible."
-          : `Última actualización: ${formatoFecha(actualizacion)} (hora de Guatemala).`}
-      </p>
-      <p>
-        Los indicadores describen los datos publicados. Esto es un indicador, no
-        una acusación.
-      </p>
-    </footer>
+    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+      <circle
+        cx="11"
+        cy="11"
+        r="9"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <circle
+        cx="11"
+        cy="11"
+        r="5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <circle cx="11" cy="11" r="1.7" fill="currentColor" />
+    </svg>
   );
 }

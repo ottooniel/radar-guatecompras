@@ -1,12 +1,15 @@
 import Link from "next/link";
 import type { OpcionesFiltro, ResultadoBusqueda } from "@/lib/consultas";
 import {
+  enUmbral,
   etiquetaCategoria,
-  formatoFecha,
+  formatoDia,
   formatoMonto,
   urlGuatecompras,
 } from "@/lib/formato";
 import type { FiltrosFormulario } from "@/lib/parametros";
+import { aTitulo } from "@/lib/titulo";
+import { PuntoEstado } from "./Estado";
 
 export interface PaginaBusquedaProps {
   filtros: FiltrosFormulario;
@@ -16,7 +19,15 @@ export interface PaginaBusquedaProps {
   pagina: number;
   tamano: number;
   error: string | null;
+  aviso: string | null;
+  actualizacion: string | null;
 }
+
+const EJEMPLOS = [
+  ["escritorios", "escritorios"],
+  ["insumos de limpieza", "insumos de limpieza"],
+  ["mantenimiento de vehículos", "mantenimiento de vehículos"],
+] as const;
 
 export function PaginaBusqueda({
   filtros,
@@ -26,165 +37,263 @@ export function PaginaBusqueda({
   pagina,
   tamano,
   error,
+  aviso,
+  actualizacion,
 }: PaginaBusquedaProps) {
   const paginas = total === 0 ? 1 : Math.ceil(total / tamano);
+  const activos = filtrosActivos(filtros);
+  const fecha = actualizacion === null ? null : formatoDia(actualizacion);
   return (
-    <main className="pagina">
-      <h1>Buscar procesos</h1>
-      <form className="busqueda" method="get" action="/" role="search">
+    <>
+      <form className="portada" method="get" action="/" role="search">
+        <section className="hero contenedor">
+          <Circuito />
+          <h1>Encuentra compras públicas que puedes ofertar</h1>
+          <p className="subtitulo">
+            Busca por producto o servicio. Cada resultado cita su NOG de
+            Guatecompras.
+          </p>
+          <div className="buscador">
+            <label className="solo-lector" htmlFor="q">
+              Qué buscas
+            </label>
+            <input
+              id="q"
+              name="q"
+              type="search"
+              maxLength={200}
+              defaultValue={filtros.q}
+              placeholder="Producto o servicio"
+              autoComplete="off"
+            />
+            <button type="submit">Buscar</button>
+          </div>
+          <p className="prueba">
+            Prueba con <Link href="/?q=escritorios">{EJEMPLOS[0][1]}</Link>,{" "}
+            <Link href="/?q=insumos%20de%20limpieza">{EJEMPLOS[1][1]}</Link> y{" "}
+            <Link href="/?q=mantenimiento%20de%20veh%C3%ADculos">
+              {EJEMPLOS[2][1]}
+            </Link>
+            .
+          </p>
+        </section>
+        <div className="franja">
+          <div className="contenedor controles">
+            <input
+              id="abrir-filtros"
+              className="abrir-filtros"
+              type="checkbox"
+            />
+            <label className="boton-filtros" htmlFor="abrir-filtros">
+              Filtros{activos.length > 0 ? ` ${activos.length}` : ""}
+            </label>
+            <label className="cortina" htmlFor="abrir-filtros" />
+            <div className="hoja">
+              <div className="hoja-cabeza">
+                <p>Filtros</p>
+                <Link href={limpiarFiltros(filtros)}>Limpiar</Link>
+              </div>
+              <div className="filtros">
+                <Selector
+                  id="departamento"
+                  nombre="departamento"
+                  etiqueta="Departamento"
+                  actual={filtros.departamento}
+                  opciones={opciones.departamentos}
+                />
+                <Selector
+                  id="estado"
+                  nombre="estado"
+                  etiqueta="Estado"
+                  actual={filtros.estado}
+                  opciones={opciones.estados}
+                />
+                <Selector
+                  id="modalidad"
+                  nombre="modalidad"
+                  etiqueta="Modalidad"
+                  actual={filtros.modalidad}
+                  opciones={opciones.modalidades}
+                />
+                <div
+                  className={
+                    filtros.desde === ""
+                      ? "fecha-grupo"
+                      : "fecha-grupo filtro-activo"
+                  }
+                >
+                  <span>Desde</span>
+                  <input
+                    id="desde"
+                    name="desde"
+                    type="date"
+                    aria-label="Publicado desde"
+                    defaultValue={filtros.desde}
+                  />
+                </div>
+                <div
+                  className={
+                    filtros.hasta === ""
+                      ? "fecha-grupo"
+                      : "fecha-grupo filtro-activo"
+                  }
+                >
+                  <span>Hasta</span>
+                  <input
+                    id="hasta"
+                    name="hasta"
+                    type="date"
+                    aria-label="Publicado hasta"
+                    defaultValue={filtros.hasta}
+                  />
+                </div>
+                <Selector
+                  id="categoria"
+                  nombre="categoria"
+                  etiqueta="Categoría"
+                  actual={filtros.categoria}
+                  opciones={opciones.categorias}
+                  etiquetaOpcion={etiquetaCategoria}
+                />
+                <label className="interruptor" htmlFor="adjudicacion">
+                  <input
+                    id="adjudicacion"
+                    name="adjudicacion"
+                    type="checkbox"
+                    value="1"
+                    defaultChecked={filtros.soloAdjudicacion}
+                  />
+                  Solo con adjudicación
+                </label>
+              </div>
+              <button className="ver-procesos" type="submit">
+                Ver {total.toLocaleString("es-GT")}{" "}
+                {total === 1 ? "proceso" : "procesos"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+      <section className="contenedor resultados" aria-label="Resultados">
         {error !== null && (
           <p className="alerta" role="alert">
             {error}
           </p>
         )}
-        <div className="campo">
-          <label htmlFor="q">Texto</label>
-          <input
-            id="q"
-            name="q"
-            type="search"
-            maxLength={200}
-            defaultValue={filtros.q}
-            placeholder="Por ejemplo, diesel"
-            autoComplete="off"
-          />
-        </div>
-        <div className="filtros">
-          <Selector
-            id="departamento"
-            nombre="departamento"
-            etiqueta="Departamento"
-            actual={filtros.departamento}
-            opciones={opciones.departamentos}
-          />
-          <Selector
-            id="estado"
-            nombre="estado"
-            etiqueta="Estado"
-            actual={filtros.estado}
-            opciones={opciones.estados}
-          />
-          <Selector
-            id="modalidad"
-            nombre="modalidad"
-            etiqueta="Modalidad"
-            actual={filtros.modalidad}
-            opciones={opciones.modalidades}
-          />
-          <div className="campo">
-            <label htmlFor="categoria">Categoría</label>
-            <select
-              id="categoria"
-              name="categoria"
-              defaultValue={filtros.categoria}
-              aria-describedby="ayuda-categoria"
-            >
-              <option value="">Todas</option>
-              {opcionesCon(opciones.categorias, filtros.categoria).map(
-                (valor) => (
-                  <option key={valor} value={valor}>
-                    {etiquetaCategoria(valor)}
-                  </option>
-                ),
-              )}
-            </select>
-            <p id="ayuda-categoria" className="ayuda">
-              Si escribes texto, la categoría no descarta resultados: el texto
-              pesa más y la categoría solo ordena.
-            </p>
-          </div>
-          <div className="campo">
-            <label htmlFor="desde">Publicado desde</label>
-            <input
-              id="desde"
-              name="desde"
-              type="date"
-              defaultValue={filtros.desde}
-            />
-          </div>
-          <div className="campo">
-            <label htmlFor="hasta">Publicado hasta</label>
-            <input
-              id="hasta"
-              name="hasta"
-              type="date"
-              defaultValue={filtros.hasta}
-            />
-          </div>
-          <div className="campo campo-check">
-            <label htmlFor="adjudicacion">
-              <input
-                id="adjudicacion"
-                name="adjudicacion"
-                type="checkbox"
-                value="1"
-                defaultChecked={filtros.soloAdjudicacion}
-              />{" "}
-              Solo con adjudicación
-            </label>
-          </div>
-        </div>
-        <div className="acciones">
-          <button type="submit">Buscar</button>
-        </div>
-      </form>
-      <p className="nota">
-        No hay valor estimado de la licitación. Si aparece un monto, es la suma
-        de las adjudicaciones, en quetzales.
-      </p>
-      <p className="resumen">
-        {total === 0
-          ? "No hay procesos con esos filtros."
-          : `${total.toLocaleString("es-GT")} ${total === 1 ? "proceso" : "procesos"}.`}
-      </p>
-      <ol className="lista">
-        {resultados.map((resultado) => (
-          <li key={resultado.nog}>
-            <article className="tarjeta">
-              <h2>
-                <Link href={`/proceso/${resultado.nog}`}>
-                  {resultado.titulo ?? "Sin título publicado"}
+        {aviso !== null && (
+          <p className="aviso" role="status">
+            {aviso}
+          </p>
+        )}
+        {aviso === null && total === 0 && error === null && (
+          <div className="vacio">
+            <p>No hay procesos con esos filtros.</p>
+            <div className="acciones-vacias">
+              {activos.map((filtro) => (
+                <Link key={filtro.etiqueta} href={filtro.href}>
+                  {filtro.etiqueta}
                 </Link>
-              </h2>
-              <div className="meta">
-                <p>
-                  Cita:{" "}
-                  <cite>
-                    <a href={urlGuatecompras(resultado.nog)} rel="noreferrer">
-                      NOG {resultado.nog}
-                    </a>
-                  </cite>
-                </p>
-                <p>{resultado.comprador ?? "Comprador no publicado"}</p>
-                <p>{resultado.departamento ?? "Sin departamento"}</p>
-                <p>{resultado.estado ?? "Sin estado"}</p>
-                <p>{resultado.modalidad ?? "Sin modalidad"}</p>
-                <p>{formatoFecha(resultado.fechaPublicacion)}</p>
-                {resultado.montoAdjudicadoGtq !== null && (
-                  <p>
-                    Monto adjudicado:{" "}
-                    {formatoMonto(resultado.montoAdjudicadoGtq)}
-                  </p>
+              ))}
+              <Link href={limpiarFiltros(filtros)}>Limpiar filtros</Link>
+            </div>
+          </div>
+        )}
+        {total > 0 && (
+          <>
+            <div className="resumen">
+              <strong>
+                {total.toLocaleString("es-GT")}{" "}
+                {total === 1 ? "proceso" : "procesos"}
+              </strong>
+              <p className="orden">
+                {filtros.q === ""
+                  ? "Mostrando lo más reciente. Escribe arriba para buscar."
+                  : `Ordenados por relevancia. Datos al ${fecha ?? "sin fecha"}.`}
+              </p>
+            </div>
+            <ol className="lista">
+              {resultados.map((resultado) => (
+                <Fila key={resultado.nog} resultado={resultado} />
+              ))}
+            </ol>
+            {paginas > 1 && (
+              <nav className="paginacion" aria-label="Paginación">
+                {pagina > 1 ? (
+                  <Link href={enlace(filtros, pagina - 1)}>Anterior</Link>
+                ) : (
+                  <span>Anterior</span>
                 )}
-              </div>
-            </article>
-          </li>
-        ))}
-      </ol>
-      {paginas > 1 && (
-        <nav className="paginacion" aria-label="Paginación">
-          {pagina > 1 && (
-            <Link href={enlace(filtros, pagina - 1)}>Anterior</Link>
-          )}
-          <span>
-            Página {pagina} de {paginas}
-          </span>
-          {pagina < paginas && (
-            <Link href={enlace(filtros, pagina + 1)}>Siguiente</Link>
-          )}
-        </nav>
-      )}
-    </main>
+                {numeros(pagina, paginas).map((numero) =>
+                  numero === pagina ? (
+                    <span key={numero} aria-current="page">
+                      {numero}
+                    </span>
+                  ) : (
+                    <Link key={numero} href={enlace(filtros, numero)}>
+                      {numero}
+                    </Link>
+                  ),
+                )}
+                {pagina < paginas ? (
+                  <Link href={enlace(filtros, pagina + 1)}>Siguiente</Link>
+                ) : (
+                  <span>Siguiente</span>
+                )}
+              </nav>
+            )}
+          </>
+        )}
+      </section>
+    </>
+  );
+}
+
+function Fila({ resultado }: { resultado: ResultadoBusqueda }) {
+  const titulo = mostrado(aTitulo(resultado.titulo));
+  const monto = formatoMonto(resultado.montoAdjudicadoGtq);
+  const cerca =
+    resultado.montoAdjudicadoGtq !== null &&
+    enUmbral(resultado.montoAdjudicadoGtq);
+  return (
+    <li className="fila">
+      <div>
+        <h2>
+          <Link href={`/proceso/${resultado.nog}`}>{titulo}</Link>
+        </h2>
+        <p className="secundaria">
+          {mostrado(aTitulo(resultado.comprador))}
+          {", "}
+          {mostrado(resultado.departamento)}
+        </p>
+        <div className="meta-fila">
+          <p>
+            <PuntoEstado estado={resultado.estado} />
+          </p>
+          <p>{mostrado(resultado.modalidad)}</p>
+          <p>
+            {resultado.fechaPublicacion === null
+              ? "No publicado"
+              : `Publicado el ${formatoDia(resultado.fechaPublicacion)}`}
+          </p>
+          <p className="nog">
+            <a href={urlGuatecompras(resultado.nog)} rel="noreferrer">
+              NOG {resultado.nog}
+            </a>
+          </p>
+        </div>
+      </div>
+      <p className="monto">
+        {monto === null ? (
+          <span className="sin-monto">Aún sin adjudicar</span>
+        ) : (
+          <>
+            {monto}
+            <small>adjudicado</small>
+            {cerca && <span className="insignia">Cerca de Q90,000</span>}
+          </>
+        )}
+      </p>
+    </li>
   );
 }
 
@@ -194,26 +303,64 @@ function Selector({
   etiqueta,
   actual,
   opciones,
+  etiquetaOpcion = (valor) => valor,
 }: {
   id: string;
   nombre: string;
   etiqueta: string;
   actual: string;
   opciones: string[];
+  etiquetaOpcion?: (valor: string) => string;
 }) {
   return (
-    <div className="campo">
-      <label htmlFor={id}>{etiqueta}</label>
-      <select id={id} name={nombre} defaultValue={actual}>
-        <option value="">Todos</option>
+    <label
+      className={actual === "" ? "filtro" : "filtro filtro-activo"}
+      htmlFor={id}
+    >
+      <select id={id} name={nombre} defaultValue={actual} aria-label={etiqueta}>
+        <option value="">{etiqueta}</option>
         {opcionesCon(opciones, actual).map((valor) => (
           <option key={valor} value={valor}>
-            {valor}
+            {etiquetaOpcion(valor)}
           </option>
         ))}
       </select>
-    </div>
+    </label>
   );
+}
+
+function Circuito() {
+  return (
+    <svg
+      className="circuito"
+      viewBox="0 0 280 160"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M8 28H90V78H150V28H250"
+        stroke="currentColor"
+        strokeWidth="1.4"
+      />
+      <path
+        d="M40 140H120V96H200V140H270"
+        stroke="currentColor"
+        strokeWidth="1.4"
+      />
+      <path d="M150 78V120" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="90" cy="78" r="3" fill="currentColor" />
+      <circle cx="150" cy="28" r="3" fill="currentColor" />
+      <circle cx="120" cy="96" r="3" fill="currentColor" />
+      <circle cx="200" cy="140" r="3" fill="currentColor" />
+    </svg>
+  );
+}
+
+function mostrado(valor: string | null): string {
+  if (valor === null || valor.trim() === "") {
+    return "No publicado";
+  }
+  return valor;
 }
 
 function opcionesCon(valores: string[], actual: string): string[] {
@@ -221,6 +368,84 @@ function opcionesCon(valores: string[], actual: string): string[] {
     return valores;
   }
   return [...valores, actual].sort((a, b) => a.localeCompare(b, "es"));
+}
+
+function numeros(actual: number, paginas: number): number[] {
+  const inicio = Math.max(1, Math.min(actual - 2, paginas - 4));
+  const fin = Math.min(paginas, inicio + 4);
+  const salida: number[] = [];
+  for (let numero = Math.max(1, fin - 4); numero <= fin; numero += 1) {
+    salida.push(numero);
+  }
+  return salida;
+}
+
+interface FiltroActivo {
+  etiqueta: string;
+  href: string;
+}
+
+function filtrosActivos(filtros: FiltrosFormulario): FiltroActivo[] {
+  const salida: FiltroActivo[] = [];
+  if (filtros.departamento !== "") {
+    salida.push({
+      etiqueta: `Quitar ${filtros.departamento}`,
+      href: enlace({ ...filtros, departamento: "" }, 1),
+    });
+  }
+  if (filtros.estado !== "") {
+    salida.push({
+      etiqueta: `Quitar ${filtros.estado}`,
+      href: enlace({ ...filtros, estado: "" }, 1),
+    });
+  }
+  if (filtros.modalidad !== "") {
+    salida.push({
+      etiqueta: `Quitar ${filtros.modalidad}`,
+      href: enlace({ ...filtros, modalidad: "" }, 1),
+    });
+  }
+  if (filtros.categoria !== "") {
+    salida.push({
+      etiqueta: `Quitar ${etiquetaCategoria(filtros.categoria)}`,
+      href: enlace({ ...filtros, categoria: "" }, 1),
+    });
+  }
+  if (filtros.desde !== "") {
+    salida.push({
+      etiqueta: `Quitar ${filtros.desde}`,
+      href: enlace({ ...filtros, desde: "" }, 1),
+    });
+  }
+  if (filtros.hasta !== "") {
+    salida.push({
+      etiqueta: `Quitar ${filtros.hasta}`,
+      href: enlace({ ...filtros, hasta: "" }, 1),
+    });
+  }
+  if (filtros.soloAdjudicacion) {
+    salida.push({
+      etiqueta: "Quitar solo con adjudicación",
+      href: enlace({ ...filtros, soloAdjudicacion: false }, 1),
+    });
+  }
+  return salida;
+}
+
+function limpiarFiltros(filtros: FiltrosFormulario): string {
+  return enlace(
+    {
+      q: filtros.q,
+      departamento: "",
+      estado: "",
+      modalidad: "",
+      categoria: "",
+      desde: "",
+      hasta: "",
+      soloAdjudicacion: false,
+    },
+    1,
+  );
 }
 
 function enlace(filtros: FiltrosFormulario, pagina: number): string {

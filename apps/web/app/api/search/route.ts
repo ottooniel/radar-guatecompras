@@ -1,4 +1,9 @@
-import { buscarProcesos, busquedaAJson } from "@/lib/consultas";
+import {
+  buscarProcesos,
+  busquedaAJson,
+  consultaVacia,
+  mensajePalabrasVacias,
+} from "@/lib/consultas";
 import { obtenerPool } from "@/lib/db";
 import { jsonError, jsonOk, registrarFallo } from "@/lib/http";
 import { leerBusqueda } from "@/lib/parametros";
@@ -12,7 +17,20 @@ export async function GET(request: Request): Promise<Response> {
     return jsonError(400, leido.error);
   }
   try {
-    const pagina = await buscarProcesos(obtenerPool(), leido.busqueda);
+    const pool = obtenerPool();
+    if (leido.busqueda.q !== null) {
+      const vacia = await consultaVacia(pool, leido.busqueda.q);
+      if (vacia) {
+        return jsonOk(
+          busquedaAJson(
+            { resultados: [], total: 0 },
+            leido.busqueda,
+            mensajePalabrasVacias(leido.busqueda.q),
+          ),
+        );
+      }
+    }
+    const pagina = await buscarProcesos(pool, leido.busqueda);
     return jsonOk(busquedaAJson(pagina, leido.busqueda));
   } catch (error) {
     registrarFallo("GET /api/search", error);

@@ -63,6 +63,7 @@ export interface Ficha {
   mesFuente: string;
   items: ItemFicha[];
   adjudicaciones: AdjudicacionFicha[];
+  proporcion: ProporcionComprador | null;
   indicadores: ReturnType<typeof armarIndicadores>;
 }
 
@@ -230,7 +231,30 @@ export async function buscarProcesos(
   };
 }
 
-export async function listarOpciones(db: Pool): Promise<OpcionesFiltro> {
+const CACHE_OPCIONES_MS = 10 * 60 * 1000;
+
+let cacheOpciones: { en: number; opciones: OpcionesFiltro } | undefined;
+
+export function vaciarCacheOpciones(): void {
+  cacheOpciones = undefined;
+}
+
+export async function listarOpciones(
+  db: Pool,
+  ahora = Date.now(),
+): Promise<OpcionesFiltro> {
+  if (
+    cacheOpciones !== undefined &&
+    ahora - cacheOpciones.en < CACHE_OPCIONES_MS
+  ) {
+    return cacheOpciones.opciones;
+  }
+  const opciones = await consultarOpciones(db);
+  cacheOpciones = { en: ahora, opciones };
+  return opciones;
+}
+
+async function consultarOpciones(db: Pool): Promise<OpcionesFiltro> {
   const [departamentos, estados, modalidades, categorias] = await Promise.all([
     distintos(db, "department"),
     distintos(db, "status_detail"),
@@ -238,6 +262,19 @@ export async function listarOpciones(db: Pool): Promise<OpcionesFiltro> {
     distintos(db, "category"),
   ]);
   return { departamentos, estados, modalidades, categorias };
+}
+
+const SQL_TSQUERY_VACIA = `
+  SELECT btrim(websearch_to_tsquery('spanish', unaccent($1))::text) = '' AS vacia
+`;
+
+export async function consultaVacia(db: Pool, q: string): Promise<boolean> {
+  const resultado = await db.query<{ vacia: boolean }>(SQL_TSQUERY_VACIA, [q]);
+  return resultado.rows[0]?.vacia === true;
+}
+
+export function mensajePalabrasVacias(q: string): string {
+  return `“${q}” son palabras comunes que no se pueden buscar. Escribe un producto o servicio, por ejemplo “escritorios”.`;
 }
 
 export async function obtenerFicha(
@@ -271,6 +308,7 @@ export async function obtenerFicha(
     mesFuente: fila.source_month,
     items: leerItems(fila.items),
     adjudicaciones,
+    proporcion,
     indicadores: armarIndicadores({
       modalidad: fila.method_detail,
       proporcion,
@@ -309,8 +347,9 @@ export function resultadoAJson(resultado: ResultadoBusqueda) {
 export function busquedaAJson(
   pagina: PaginaResultados,
   busqueda: BusquedaValida,
+  aviso?: string | null,
 ) {
-  return {
+  const cuerpo = {
     filtros: {
       q: busqueda.q,
       departamento: busqueda.departamento,
@@ -326,6 +365,10 @@ export function busquedaAJson(
     limit: busqueda.limit,
     resultados: pagina.resultados.map(resultadoAJson),
   };
+  if (aviso === undefined || aviso === null || aviso === "") {
+    return cuerpo;
+  }
+  return { ...cuerpo, aviso };
 }
 
 export function fichaAJson(ficha: Ficha) {

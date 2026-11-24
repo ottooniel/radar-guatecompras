@@ -8,7 +8,7 @@ export function NoEncontrado({
   texto: string;
 }) {
   return (
-    <main className="pagina">
+    <main className="pagina contenedor">
       <h1>{titulo}</h1>
       <p>{texto}</p>
       <p>

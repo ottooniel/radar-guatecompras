@@ -1,6 +1,9 @@
 import { Pool, type PoolConfig } from "pg";
 
-/** Tope por instancia. En Vercel cada instancia es corta; 3 alcanza para buscar, contar y armar filtros a la vez. */
+/**
+ * Tope por instancia fuera del Transaction pooler.
+ * En el puerto 6543 (transaction mode) el tope baja a 1.
+ */
 export const MAX_CONEXIONES = 3;
 
 const APLICACION = "radar-guatecompras-web";
@@ -9,18 +12,37 @@ let pool: Pool | undefined;
 
 /**
  * Pasa `DATABASE_URL` tal cual. `pg` 8 entiende `sslmode=no-verify`
- * (Session pooler de Supabase) y deja `rejectUnauthorized` en false.
- * La cadena no se escribe en logs.
+ * y deja `rejectUnauthorized` en false. La cadena no se escribe en logs.
+ *
+ * Las consultas de la web usan `query(texto, valores)` sin `name`.
+ * El Transaction pooler (puerto 6543) no conserva sentencias preparadas
+ * con nombre; las consultas sin nombre sí pasan.
  */
 export function opcionesDeConexion(databaseUrl: string): PoolConfig {
   return {
     connectionString: databaseUrl,
-    max: MAX_CONEXIONES,
+    max: maxConexionesDe(databaseUrl),
     application_name: APLICACION,
     connectionTimeoutMillis: 10_000,
     idleTimeoutMillis: 10_000,
     allowExitOnIdle: true,
   };
+}
+
+export function maxConexionesDe(databaseUrl: string): number {
+  if (puertoDe(databaseUrl) === "6543") {
+    return 1;
+  }
+  return MAX_CONEXIONES;
+}
+
+function puertoDe(databaseUrl: string): string {
+  try {
+    return new URL(databaseUrl).port;
+  } catch {
+    const coincidencia = /:(\d+)(?:\/|\?|$)/.exec(databaseUrl);
+    return coincidencia?.[1] ?? "";
+  }
 }
 
 export function obtenerPool(): Pool {

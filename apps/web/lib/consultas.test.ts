@@ -227,6 +227,27 @@ describe.skipIf(databaseUrl === undefined)(
       expect(detalle.fecha_cierre).toBeNull();
       expect(detalle.indicadores[0]?.aviso).toContain("no una acusación");
     });
+
+    it("explica una búsqueda que solo tiene palabras vacías", async () => {
+      const respuesta = await buscarApi(
+        peticion("/api/search?q=" + encodeURIComponent("de la")),
+      );
+      expect(respuesta.status).toBe(200);
+      const cuerpo = (await respuesta.json()) as {
+        resultados: unknown[];
+        aviso?: string;
+      };
+      expect(cuerpo.resultados).toEqual([]);
+      expect(cuerpo.aviso).toBe(
+        "“de la” son palabras comunes que no se pueden buscar. Escribe un producto o servicio, por ejemplo “escritorios”.",
+      );
+
+      const conPalabra = await buscarApi(
+        peticion("/api/search?q=" + encodeURIComponent("de la escritorios")),
+      );
+      const otro = (await conPalabra.json()) as { aviso?: string };
+      expect(otro.aviso).toBeUndefined();
+    });
   },
 );
 

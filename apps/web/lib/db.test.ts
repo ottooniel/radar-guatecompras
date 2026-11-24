@@ -32,6 +32,13 @@ it("pg deja de verificar el certificado con sslmode=no-verify", () => {
   expect(ssl).toMatchObject({ rejectUnauthorized: false });
 });
 
+it("el puerto 6543 usa una sola conexión", () => {
+  const url =
+    "postgres://postgres.proyecto:secret@aws-0.pooler.supabase.com:6543/postgres?sslmode=no-verify";
+  expect(opcionesDeConexion(url).max).toBe(1);
+  expect(opcionesDeConexion(url).connectionString).toBe(url);
+});
+
 it("en local no exige SSL", () => {
   const client = new Client({
     connectionString: opcionesDeConexion(

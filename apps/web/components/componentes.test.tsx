@@ -6,7 +6,7 @@ import { expect, it, vi } from "vitest";
 import type { Ficha, ResultadoBusqueda } from "@/lib/consultas";
 import { armarIndicadores } from "@/lib/indicadores";
 import { FichaProceso } from "./FichaProceso";
-import { Marco, Pie } from "./Marco";
+import { Marco } from "./Marco";
 import { NoEncontrado } from "./NoEncontrado";
 import { PaginaBusqueda } from "./PaginaBusqueda";
 
@@ -27,8 +27,8 @@ vi.mock("next/link", () => ({
 
 const resultado: ResultadoBusqueda = {
   nog: "900000001",
-  titulo: "Suministro de diésel para generadores",
-  comprador: "Municipalidad de Ejemplo",
+  titulo: "SUMINISTRO DE DIÉSEL PARA GENERADORES",
+  comprador: "MUNICIPALIDAD DE EJEMPLO",
   departamento: "GUATEMALA",
   estado: "Vigente",
   modalidad: "Compra directa",
@@ -37,133 +37,179 @@ const resultado: ResultadoBusqueda = {
   montoAdjudicadoGtq: "89000.00",
 };
 
-it("la búsqueda muestra filtros, cita y monto adjudicado", () => {
+const filtros = {
+  q: "diesel",
+  departamento: "",
+  estado: "",
+  modalidad: "",
+  categoria: "",
+  desde: "",
+  hasta: "",
+  soloAdjudicacion: false,
+};
+
+it("la portada muestra el buscador, la cita y el monto", () => {
   const html = renderToStaticMarkup(
     <PaginaBusqueda
-      filtros={{
-        q: "diesel",
-        departamento: "",
-        estado: "",
-        modalidad: "",
-        categoria: "goods",
-        desde: "",
-        hasta: "",
-        soloAdjudicacion: true,
-      }}
+      filtros={filtros}
       opciones={{
         departamentos: ["GUATEMALA"],
         estados: ["Vigente"],
         modalidades: ["Compra directa"],
-        categorias: ["goods", "services"],
+        categorias: ["goods"],
       }}
       resultados={[
         resultado,
-        {
-          ...resultado,
-          nog: "900000002",
-          montoAdjudicadoGtq: null,
-          titulo: "Papel bond",
-        },
+        { ...resultado, nog: "900000002", montoAdjudicadoGtq: null },
       ]}
       total={25}
       pagina={2}
       tamano={20}
       error={null}
+      aviso={null}
+      actualizacion="2026-11-24T18:05:00.000Z"
     />,
   );
 
-  expect(html).toContain("<h1>Buscar procesos</h1>");
-  expect(html).toContain('for="q"');
+  expect(html).toContain("Encuentra compras públicas que puedes ofertar");
   expect(html).toContain('id="q"');
-  expect(html).toContain('for="departamento"');
-  expect(html).toContain('for="estado"');
-  expect(html).toContain('for="modalidad"');
-  expect(html).toContain('for="categoria"');
-  expect(html).toContain('for="desde"');
-  expect(html).toContain('for="hasta"');
-  expect(html).toContain('for="adjudicacion"');
+  expect(html).toContain('aria-label="Departamento"');
   expect(html).toContain("Suministro de diésel para generadores");
-  expect(html).toContain("NOG 900000001");
-  expect(html).toContain("Municipalidad de Ejemplo");
+  expect(html).toContain("Municipalidad de ejemplo");
   expect(html).toContain("GUATEMALA");
   expect(html).toContain("Vigente");
-  expect(html).toContain("Compra directa");
-  expect(html).toContain("10 de noviembre de 2026");
+  expect(html).toContain("Publicado el 10 de noviembre");
+  expect(html).toContain("NOG 900000001");
   expect(html).toContain("Q89,000.00");
-  expect(html).toContain("consultaConcurso.aspx?nog=900000001");
-  expect(html).toContain("Página 2 de 2");
-  expect(html).toContain(">Anterior<");
-  expect(html).not.toContain(">Siguiente<");
-  expect(html).toContain("No hay valor estimado");
+  expect(html).toContain("Cerca de Q90,000");
+  expect(html).toContain("Aún sin adjudicar");
+  expect(html).toContain("Ordenados por relevancia");
+  expect(html).toContain("Anterior");
+  expect(html).toContain("escritorios");
+  expect(html).not.toMatch(/·|→/);
   expect(html).not.toMatch(/corrup/i);
 });
 
-it("la ficha cita el NOG, no inventa cierre y muestra indicadores", () => {
-  const html = renderToStaticMarkup(<FichaProceso ficha={ficha(null)} />);
+it("sin búsqueda dice que muestra lo más reciente", () => {
+  const html = renderToStaticMarkup(
+    <PaginaBusqueda
+      filtros={{ ...filtros, q: "" }}
+      opciones={{
+        departamentos: [],
+        estados: [],
+        modalidades: [],
+        categorias: [],
+      }}
+      resultados={[resultado]}
+      total={1}
+      pagina={1}
+      tamano={20}
+      error={null}
+      aviso={null}
+      actualizacion={null}
+    />,
+  );
+  expect(html).toContain(
+    "Mostrando lo más reciente. Escribe arriba para buscar.",
+  );
+});
 
+it("sin resultados ofrece quitar cada filtro", () => {
+  const html = renderToStaticMarkup(
+    <PaginaBusqueda
+      filtros={{ ...filtros, departamento: "GUATEMALA" }}
+      opciones={{
+        departamentos: ["GUATEMALA"],
+        estados: [],
+        modalidades: [],
+        categorias: [],
+      }}
+      resultados={[]}
+      total={0}
+      pagina={1}
+      tamano={20}
+      error={null}
+      aviso={null}
+      actualizacion={null}
+    />,
+  );
+  expect(html).toContain("No hay procesos con esos filtros.");
+  expect(html).toContain("Quitar GUATEMALA");
+  expect(html).toContain("Limpiar filtros");
+});
+
+it("la ficha muestra el monto, el cierre ausente y un solo aviso", () => {
+  const html = renderToStaticMarkup(<FichaProceso ficha={ficha(null)} />);
   expect(html).toContain("Sin fecha de cierre publicada");
   expect(html).toContain("15101505");
   expect(html).toContain("Proveedor Uno");
   expect(html).toContain("Q89,000.00");
-  expect(html).toContain("cercano al umbral de Q90,000 de compra directa");
-  expect(html).toContain("Esto es un indicador, no una acusación.");
-  expect(html).toContain("Bodega central");
-  expect(html).toContain("NOG 900000001");
+  expect(html).toContain("Presente");
+  expect(html).toContain("NOG 900000001 Copiar");
+  expect(html).toContain("Volver a los resultados");
+  expect(html).toContain("No son una acusación ni prueban irregularidades.");
+  expect(html.match(/No son una acusación/g)).toHaveLength(1);
   expect(html).not.toMatch(/corrup/i);
 });
 
-it("muestra la fecha de cierre cuando está publicada", () => {
+it("marca el umbral sin coincidencia cuando el monto queda afuera", () => {
+  const base = ficha("2026-11-18T18:00:00.000Z");
   const html = renderToStaticMarkup(
-    <FichaProceso ficha={ficha("2026-11-18T18:00:00.000Z")} />,
+    <FichaProceso
+      ficha={{
+        ...base,
+        adjudicaciones: [{ ...base.adjudicaciones[0]!, montoGtq: "1000.00" }],
+      }}
+    />,
   );
-  expect(html).toContain("18 de noviembre de 2026");
+  expect(html).toContain("18 de noviembre");
+  expect(html).toContain("Sin coincidencia");
   expect(html).not.toContain("Sin fecha de cierre publicada");
 });
 
-it("el 404 y el pie explican la fuente y los indicadores", () => {
+it("el 404 habla de los últimos 5 meses y el pie cita la fuente", () => {
   const perdido = renderToStaticMarkup(
     <NoEncontrado
       titulo="No encontramos ese proceso"
-      texto="Ese NOG no está en los meses cargados, o el número no es válido."
+      texto="Ese NOG no está en los últimos 5 meses cargados."
     />,
   );
-  expect(perdido).toContain("No encontramos ese proceso");
-  expect(perdido).toContain('href="/"');
-
-  const pie = renderToStaticMarkup(
-    <Pie actualizacion="2026-11-24T18:05:00.000Z" />,
-  );
-  expect(pie).toContain("Guatecompras");
-  expect(pie).toContain("CC BY 4.0");
-  expect(pie).toContain("24 de noviembre de 2026");
-  expect(pie).toContain("Esto es un indicador, no una acusación.");
+  expect(perdido).toContain("últimos 5 meses cargados");
 
   const marco = renderToStaticMarkup(
-    <Marco actualizacion={null}>
+    <Marco actualizacion="2026-11-24T18:05:00.000Z">
       <p>contenido</p>
     </Marco>,
   );
   expect(marco).toContain("Radar Guatecompras");
-  expect(marco).toContain("Saltar al contenido");
-  expect(marco).toContain("Fecha de última actualización no disponible.");
+  expect(marco).toContain("Buscar");
+  expect(marco).toContain("Alertas");
+  expect(marco).toContain("Acerca de los datos");
+  expect(marco).toContain("CC BY 4.0");
+  expect(marco).toContain(
+    "Los indicadores describen datos publicados y no son una acusación.",
+  );
+  expect(marco).toContain("24 de noviembre");
 });
 
-it("el estilo es azul oscuro, con foco visible y corte para móvil", () => {
+it("el estilo es claro, con foco visible y corte para móvil", () => {
   const css = readFileSync(
     fileURLToPath(new URL("../app/globals.css", import.meta.url)),
     "utf8",
   );
-  expect(css).toContain("#071833");
+  expect(css).toContain("#ffffff");
+  expect(css).toContain("#0b1b3b");
   expect(css).toContain(":focus-visible");
-  expect(css).toContain("@media (max-width: 720px)");
-  expect(css).toMatch(/stroke='%232f6eb8'/);
+  expect(css).toContain("@media (max-width: 760px)");
+  expect(css).toContain("prefers-color-scheme: dark");
+  expect(css).toContain("prefers-reduced-motion");
 });
 
 function ficha(fechaCierre: string | null): Ficha {
   return {
     nog: "900000001",
     ocid: "ocds-test-900000001",
-    titulo: "Suministro de diésel para generadores",
+    titulo: "SUMINISTRO DE DIÉSEL PARA GENERADORES",
     estado: "Vigente",
     modalidad: "Compra directa",
     categoria: "goods",
@@ -171,7 +217,7 @@ function ficha(fechaCierre: string | null): Ficha {
     fechaCierre,
     comprador: {
       nit: "NIT-A",
-      nombre: "Municipalidad de Ejemplo",
+      nombre: "MUNICIPALIDAD DE EJEMPLO",
       unidadGcuc: "U-1",
       unidadNombre: "Bodega central",
       departamento: "GUATEMALA",
@@ -197,6 +243,7 @@ function ficha(fechaCierre: string | null): Ficha {
         estado: "Adjudicado",
       },
     ],
+    proporcion: { total: 3, directas: 2 },
     indicadores: armarIndicadores({
       modalidad: "Compra directa",
       proporcion: { total: 3, directas: 2 },

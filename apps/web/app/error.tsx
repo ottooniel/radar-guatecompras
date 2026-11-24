@@ -9,9 +9,11 @@ export default function ErrorConsulta({
 }) {
   void error.digest;
   return (
-    <main className="pagina">
-      <h1>No se pudo consultar la base</h1>
-      <p>Inténtalo de nuevo en un momento.</p>
+    <main className="pagina contenedor error-pagina">
+      <h1>No se pudo conectar</h1>
+      <p>
+        No pudimos consultar los datos. Revisa la conexión e inténtalo de nuevo.
+      </p>
       <button type="button" onClick={() => reset()}>
         Reintentar
       </button>

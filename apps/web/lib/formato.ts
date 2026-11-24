@@ -86,6 +86,23 @@ const FECHA = new Intl.DateTimeFormat("es-GT", {
   timeZone: "America/Guatemala",
 });
 
+const DIA = new Intl.DateTimeFormat("es-GT", {
+  day: "numeric",
+  month: "long",
+  timeZone: "America/Guatemala",
+});
+
+export function formatoDia(iso: string | null): string {
+  if (iso === null) {
+    return "No publicado";
+  }
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) {
+    return "No publicado";
+  }
+  return DIA.format(fecha);
+}
+
 export function formatoFecha(iso: string | null): string {
   if (iso === null) {
     return "Sin fecha publicada";
