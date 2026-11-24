@@ -2,7 +2,7 @@
 
 ## Qué es
 
-Alertas de concursos del Estado para MIPYMES, con búsqueda en español y respuestas citadas al NOG. Este monorepo tiene el ETL de datos abiertos, la aplicación web, el servidor MCP y los tipos compartidos. La web y el MCP siguen en esqueleto. El ETL descarga los paquetes OCDS mensuales y los aplana a Parquet.
+Alertas de concursos del Estado para MIPYMES, con búsqueda en español y respuestas citadas al NOG. Este monorepo tiene el ETL de datos abiertos, la aplicación web de búsqueda, el servidor MCP y los tipos compartidos. El MCP sigue en esqueleto. El ETL descarga los paquetes OCDS mensuales y los aplana a Parquet.
 
 ## Fuente de datos y licencia
 
@@ -22,11 +22,29 @@ pnpm test
 pnpm build
 ```
 
-La página inicial, en local:
+## Web
+
+La búsqueda y la ficha están en `apps/web`. Next.js no lee el `.env` de la raíz: usa `apps/web/.env.local`.
 
 ```bash
+cp apps/web/.env.example apps/web/.env.local
 pnpm --filter @radar-guatecompras/web dev
 ```
+
+En local la cadena es la de docker compose, `postgres://radar:radar@localhost:5432/radar`. Antes de abrir la web, migra y carga al menos un mes (`pnpm migrate`, `pnpm etl`, `pnpm load`). Abre <http://localhost:3000>. La raíz es la búsqueda. La ficha es `/proceso/[nog]`.
+
+La API JSON queda lista para el MCP de una fase posterior:
+
+- `GET /api/search` usa los mismos filtros que el formulario: `q`, `departamento`, `estado`, `modalidad`, `categoria`, `desde`, `hasta`, `adjudicacion=1` y `pagina`. `limit` va de 1 a 50; si falta, son 20. Fuera de ese rango responde 400. La página HTML ignora `limit` y muestra 20.
+- `GET /api/tenders/[nog]` devuelve la ficha. Un NOG que no es un entero positivo responde 400. Uno que no está cargado responde 404.
+
+En Vercel hace falta la misma `DATABASE_URL` que el ETL. Otto la configura en el proyecto: la cadena del Session pooler de Supabase, terminada en `?sslmode=no-verify`. No hay otras variables. El pool usa como máximo 3 conexiones por instancia. `pg` 8 entiende `sslmode=no-verify` y no verifica el certificado. La cadena no se imprime en logs ni se manda al navegador.
+
+Los procesos sin `tender_end` dicen «Sin fecha de cierre publicada». No hay valor estimado: el monto de la lista es la suma de adjudicaciones en GTQ. Con texto y categoría a la vez, el texto no descarta filas (el UNSPSC a veces viene mal clasificado): ordena por `ts_rank` y la categoría solo desempata. Sin texto, la categoría filtra. Cada NOG se muestra como cita. El enlace externo solo lleva ese número: `https://www.guatecompras.gt/concursos/consultaConcurso.aspx?nog=`. No se raspa Guatecompras.
+
+Los indicadores (modalidad, proporción de compra directa del mismo NIT en los meses cargados, monto adjudicado entre Q85,000 y Q90,000) describen los datos publicados. No son una acusación. «Compra directa» es la modalidad cuyo texto contiene esas palabras, por ejemplo «Compra Directa con Oferta Electrónica (Art. 43 LCE Inciso b)».
+
+`pnpm test` cubre esas consultas si `DATABASE_URL` apunta a Postgres. Crean la base `radar_web_test` y la siembran con filas de ejemplo. No tocan la base `radar`.
 
 El ETL, desde la raíz del repo. `--desde` y `--hasta` son inclusivos, con mes de dos dígitos. La URL de Guatecompras usa el mes sin cero (`2026/9`); el comando no.
 
