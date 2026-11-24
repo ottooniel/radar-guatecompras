@@ -5,4 +5,5 @@ pnpm-lock.yaml
 **/dist
 **/coverage
 data
+packages/etl/test/fixtures
 **/next-env.d.ts

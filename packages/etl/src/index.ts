@@ -1,2 +1,2 @@
-/** Paquete de ingesta. La descarga OCDS no está implementada en esta fase. */
+/** Paquete de ingesta OCDS. El comando es `pnpm etl`. */
 export const NOMBRE_PAQUETE = "@radar-guatecompras/etl";

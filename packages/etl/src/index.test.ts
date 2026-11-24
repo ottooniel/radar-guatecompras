@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { NOMBRE_PAQUETE } from "./index.js";
 
-it("reserva el paquete de ingesta sin descargar datos", () => {
+it("identifica el paquete de ingesta", () => {
   expect(NOMBRE_PAQUETE).toBe("@radar-guatecompras/etl");
 });
