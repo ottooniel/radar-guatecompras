@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { aTitulo } from "./titulo";
+import { aDepartamento, aTitulo, conDepartamento } from "./titulo";
 
 it("pasa el título a minúsculas y mayúscula de oración", () => {
   expect(aTitulo("ADQUISICIÓN DE DIÉSEL PARA GENERADORES.")).toBe(
@@ -9,8 +9,33 @@ it("pasa el título a minúsculas y mayúscula de oración", () => {
     "Compra de papel. Entrega en bodega",
   );
   expect(aTitulo("MINISTERIO DE LA DEFENSA NACIONAL")).toBe(
-    "Ministerio de la defensa nacional",
+    "Ministerio de la Defensa Nacional",
   );
+});
+
+it("restituye departamentos, municipios e instituciones", () => {
+  expect(
+    aTitulo(
+      "ADQUISICIÓN DE REPUESTOS PARA DIEZ VEHÍCULOS DEL PARQUE VEHICULAR DE LA BRIGADA DE COMUNICACIONES DEL EJÉRCITO DE GUATEMALA",
+    ),
+  ).toBe(
+    "Adquisición de repuestos para diez vehículos del parque vehicular de la Brigada de Comunicaciones del Ejército de Guatemala",
+  );
+  expect(aTitulo("MUNICIPALIDAD DE CUBULCO, BAJA VERAPAZ")).toBe(
+    "Municipalidad de Cubulco, Baja Verapaz",
+  );
+  expect(aTitulo("MUNICIPALIDAD DE SAN JERONIMO, BAJA VERAPAZ")).toBe(
+    "Municipalidad de San Jerónimo, Baja Verapaz",
+  );
+  expect(aTitulo("INSTITUTO NACIONAL DE ELECTRIFICACIÓN, INDE")).toBe(
+    "Instituto Nacional de Electrificación, INDE",
+  );
+  expect(aDepartamento("GUATEMALA")).toBe("Guatemala");
+  expect(aDepartamento("BAJA VERAPAZ")).toBe("Baja Verapaz");
+  expect(aDepartamento("PETEN")).toBe("Petén");
+  expect(
+    conDepartamento("Municipalidad de Cubulco, Baja Verapaz", "Baja Verapaz"),
+  ).toBe("Municipalidad de Cubulco, Baja Verapaz");
 });
 
 it("conserva siglas y números ordinales", () => {

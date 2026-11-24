@@ -41,7 +41,7 @@ En Vercel, `DATABASE_URL` debe ser la cadena del Transaction pooler de Supabase:
 
 El ETL en GitHub Actions sigue con el Session pooler (puerto 5432), el secreto `DATABASE_URL` del repositorio. No es la cadena de la web.
 
-`pg` 8 entiende `sslmode=no-verify` y no verifica el certificado. La cadena no se imprime en logs ni se manda al navegador. No hay otras variables. Los filtros de la portada se recuerdan 10 minutos en la memoria del servidor.
+`pg` 8 entiende `sslmode=no-verify` y no verifica el certificado. La cadena no se imprime en logs ni se manda al navegador. Verificar el certificado con `sslmode=verify-full` y el CA de Supabase queda como opción futura. No hay otras variables. Los filtros de la portada se recuerdan 10 minutos en la memoria del servidor.
 
 La API JSON queda lista para el MCP de una fase posterior:
 

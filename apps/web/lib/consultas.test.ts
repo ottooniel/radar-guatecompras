@@ -28,6 +28,10 @@ it("ordena por ts_rank y no deja que la categoría tape el texto", () => {
   );
   expect(SQL_LISTADO).toContain("ts_rank(t.search, c.ts)");
   expect(SQL_LISTADO).toContain("OR $1::text IS NOT NULL");
+  expect(SQL_LISTADO).toContain(
+    "t.date_published >= ($6::date::timestamp AT TIME ZONE 'America/Guatemala')",
+  );
+  expect(SQL_LISTADO).not.toContain("(t.date_published AT TIME ZONE");
 });
 
 describe.skipIf(databaseUrl === undefined)(

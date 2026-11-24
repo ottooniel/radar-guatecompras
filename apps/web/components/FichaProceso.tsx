@@ -9,7 +9,7 @@ import {
   sumarMontos,
   urlGuatecompras,
 } from "@/lib/formato";
-import { aTitulo } from "@/lib/titulo";
+import { aDepartamento, aTitulo } from "@/lib/titulo";
 import { CopiarNog } from "./CopiarNog";
 import { PuntoEstado } from "./Estado";
 
@@ -45,7 +45,11 @@ export function FichaProceso({ ficha }: { ficha: Ficha }) {
         </div>
         <div className="bloque-monto">
           {monto === null ? (
-            <p className="monto-grande sin-monto">Aún sin adjudicar</p>
+            <p className="monto-grande sin-monto">
+              {ficha.adjudicaciones.length > 0
+                ? "Adjudicado, monto no publicado"
+                : "Aún sin adjudicar"}
+            </p>
           ) : (
             <p className="monto-grande">{monto}</p>
           )}
@@ -144,11 +148,11 @@ export function FichaProceso({ ficha }: { ficha: Ficha }) {
                 <dt>NIT</dt>
                 <dd>{mostrado(ficha.comprador.nit)}</dd>
                 <dt>Unidad</dt>
-                <dd>{mostrado(ficha.comprador.unidadNombre)}</dd>
+                <dd>{mostrado(aTitulo(ficha.comprador.unidadNombre))}</dd>
                 <dt>Código</dt>
                 <dd>{mostrado(ficha.comprador.unidadGcuc)}</dd>
                 <dt>Departamento</dt>
-                <dd>{mostrado(ficha.comprador.departamento)}</dd>
+                <dd>{aDepartamento(ficha.comprador.departamento)}</dd>
               </dl>
             </section>
             <section className="bloque" aria-labelledby="indicadores">

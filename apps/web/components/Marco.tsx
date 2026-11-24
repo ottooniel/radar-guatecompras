@@ -1,15 +1,14 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { formatoDia } from "@/lib/formato";
+import { MenuBuscar } from "./MenuBuscar";
 
 export function Marco({
   children,
   actualizacion,
-  inicio = false,
 }: {
   children: ReactNode;
   actualizacion: string | null;
-  inicio?: boolean;
 }) {
   const fecha = actualizacion === null ? null : formatoDia(actualizacion);
   return (
@@ -24,12 +23,12 @@ export function Marco({
             Radar Guatecompras
           </Link>
           <nav className="menu" aria-label="Secciones">
-            <Link href="/" aria-current={inicio ? "page" : undefined}>
-              Buscar
-            </Link>
-            <span>Alertas</span>
-            <span>Acerca de los datos</span>
+            <MenuBuscar />
           </nav>
+          <p className="proximamente">
+            <span>Alertas, próximamente</span>
+            <span>Acerca de los datos, próximamente</span>
+          </p>
         </div>
       </header>
       <div id="contenido">{children}</div>

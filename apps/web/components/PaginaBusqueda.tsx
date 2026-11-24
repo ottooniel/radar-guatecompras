@@ -8,8 +8,9 @@ import {
   urlGuatecompras,
 } from "@/lib/formato";
 import type { FiltrosFormulario } from "@/lib/parametros";
-import { aTitulo } from "@/lib/titulo";
+import { aDepartamento, aTitulo, conDepartamento } from "@/lib/titulo";
 import { PuntoEstado } from "./Estado";
+import { CerrarConEscape, EnviarEnEscritorio } from "./HojaFiltros";
 
 export interface PaginaBusquedaProps {
   filtros: FiltrosFormulario;
@@ -41,11 +42,18 @@ export function PaginaBusqueda({
   actualizacion,
 }: PaginaBusquedaProps) {
   const paginas = total === 0 ? 1 : Math.ceil(total / tamano);
+  const fuera = total > 0 && pagina > paginas;
   const activos = filtrosActivos(filtros);
   const fecha = actualizacion === null ? null : formatoDia(actualizacion);
   return (
     <>
-      <form className="portada" method="get" action="/" role="search">
+      <form
+        key={JSON.stringify(filtros)}
+        className="portada"
+        method="get"
+        action="/"
+        role="search"
+      >
         <section className="hero contenedor">
           <Circuito />
           <h1>Encuentra compras públicas que puedes ofertar</h1>
@@ -89,83 +97,93 @@ export function PaginaBusqueda({
             </label>
             <label className="cortina" htmlFor="abrir-filtros" />
             <div className="hoja">
+              <CerrarConEscape />
               <div className="hoja-cabeza">
                 <p>Filtros</p>
+                <label className="cerrar-hoja" htmlFor="abrir-filtros">
+                  Cerrar
+                </label>
                 <Link href={limpiarFiltros(filtros)}>Limpiar</Link>
               </div>
-              <div className="filtros">
-                <Selector
-                  id="departamento"
-                  nombre="departamento"
-                  etiqueta="Departamento"
-                  actual={filtros.departamento}
-                  opciones={opciones.departamentos}
-                />
-                <Selector
-                  id="estado"
-                  nombre="estado"
-                  etiqueta="Estado"
-                  actual={filtros.estado}
-                  opciones={opciones.estados}
-                />
-                <Selector
-                  id="modalidad"
-                  nombre="modalidad"
-                  etiqueta="Modalidad"
-                  actual={filtros.modalidad}
-                  opciones={opciones.modalidades}
-                />
-                <div
-                  className={
-                    filtros.desde === ""
-                      ? "fecha-grupo"
-                      : "fecha-grupo filtro-activo"
-                  }
-                >
-                  <span>Desde</span>
-                  <input
-                    id="desde"
-                    name="desde"
-                    type="date"
-                    aria-label="Publicado desde"
-                    defaultValue={filtros.desde}
+              <EnviarEnEscritorio>
+                <div className="filtros">
+                  <Selector
+                    id="departamento"
+                    nombre="departamento"
+                    etiqueta="Departamento"
+                    actual={filtros.departamento}
+                    opciones={opciones.departamentos}
+                    etiquetaOpcion={aDepartamento}
                   />
+                  <Selector
+                    id="estado"
+                    nombre="estado"
+                    etiqueta="Estado"
+                    actual={filtros.estado}
+                    opciones={opciones.estados}
+                  />
+                  <Selector
+                    id="modalidad"
+                    nombre="modalidad"
+                    etiqueta="Modalidad"
+                    actual={filtros.modalidad}
+                    opciones={opciones.modalidades}
+                  />
+                  <div
+                    className={
+                      filtros.desde === ""
+                        ? "fecha-grupo"
+                        : "fecha-grupo filtro-activo"
+                    }
+                  >
+                    <span>Desde</span>
+                    <input
+                      id="desde"
+                      name="desde"
+                      type="date"
+                      aria-label="Publicado desde"
+                      defaultValue={filtros.desde}
+                    />
+                  </div>
+                  <div
+                    className={
+                      filtros.hasta === ""
+                        ? "fecha-grupo"
+                        : "fecha-grupo filtro-activo"
+                    }
+                  >
+                    <span>Hasta</span>
+                    <input
+                      id="hasta"
+                      name="hasta"
+                      type="date"
+                      aria-label="Publicado hasta"
+                      defaultValue={filtros.hasta}
+                    />
+                  </div>
+                  <Selector
+                    id="categoria"
+                    nombre="categoria"
+                    etiqueta="Categoría"
+                    actual={filtros.categoria}
+                    opciones={opciones.categorias}
+                    etiquetaOpcion={etiquetaCategoria}
+                  />
+                  <label className="interruptor" htmlFor="adjudicacion">
+                    <input
+                      id="adjudicacion"
+                      name="adjudicacion"
+                      type="checkbox"
+                      value="1"
+                      defaultChecked={filtros.soloAdjudicacion}
+                    />
+                    Solo con adjudicación
+                  </label>
+                  <button className="aplicar" type="submit">
+                    Aplicar
+                  </button>
                 </div>
-                <div
-                  className={
-                    filtros.hasta === ""
-                      ? "fecha-grupo"
-                      : "fecha-grupo filtro-activo"
-                  }
-                >
-                  <span>Hasta</span>
-                  <input
-                    id="hasta"
-                    name="hasta"
-                    type="date"
-                    aria-label="Publicado hasta"
-                    defaultValue={filtros.hasta}
-                  />
-                </div>
-                <Selector
-                  id="categoria"
-                  nombre="categoria"
-                  etiqueta="Categoría"
-                  actual={filtros.categoria}
-                  opciones={opciones.categorias}
-                  etiquetaOpcion={etiquetaCategoria}
-                />
-                <label className="interruptor" htmlFor="adjudicacion">
-                  <input
-                    id="adjudicacion"
-                    name="adjudicacion"
-                    type="checkbox"
-                    value="1"
-                    defaultChecked={filtros.soloAdjudicacion}
-                  />
-                  Solo con adjudicación
-                </label>
-              </div>
+              </EnviarEnEscritorio>
               <button className="ver-procesos" type="submit">
                 Ver {total.toLocaleString("es-GT")}{" "}
                 {total === 1 ? "proceso" : "procesos"}
@@ -185,7 +203,17 @@ export function PaginaBusqueda({
             {aviso}
           </p>
         )}
-        {aviso === null && total === 0 && error === null && (
+        {fuera && (
+          <div className="vacio">
+            <p>Esta página no existe. La última es la {paginas}.</p>
+            <p>
+              <Link href={enlace(filtros, paginas)}>
+                Ir a la página {paginas}
+              </Link>
+            </p>
+          </div>
+        )}
+        {!fuera && aviso === null && total === 0 && error === null && (
           <div className="vacio">
             <p>No hay procesos con esos filtros.</p>
             <div className="acciones-vacias">
@@ -198,7 +226,7 @@ export function PaginaBusqueda({
             </div>
           </div>
         )}
-        {total > 0 && (
+        {!fuera && total > 0 && (
           <>
             <div className="resumen">
               <strong>
@@ -208,7 +236,9 @@ export function PaginaBusqueda({
               <p className="orden">
                 {filtros.q === ""
                   ? "Mostrando lo más reciente. Escribe arriba para buscar."
-                  : `Ordenados por relevancia. Datos al ${fecha ?? "sin fecha"}.`}
+                  : fecha === null
+                    ? "Ordenados por relevancia. Fecha de actualización no disponible."
+                    : `Ordenados por relevancia. Datos al ${fecha}.`}
               </p>
             </div>
             <ol className="lista">
@@ -261,9 +291,10 @@ function Fila({ resultado }: { resultado: ResultadoBusqueda }) {
           <Link href={`/proceso/${resultado.nog}`}>{titulo}</Link>
         </h2>
         <p className="secundaria">
-          {mostrado(aTitulo(resultado.comprador))}
-          {", "}
-          {mostrado(resultado.departamento)}
+          {conDepartamento(
+            mostrado(aTitulo(resultado.comprador)),
+            aDepartamento(resultado.departamento),
+          )}
         </p>
         <div className="meta-fila">
           <p>
@@ -389,7 +420,7 @@ function filtrosActivos(filtros: FiltrosFormulario): FiltroActivo[] {
   const salida: FiltroActivo[] = [];
   if (filtros.departamento !== "") {
     salida.push({
-      etiqueta: `Quitar ${filtros.departamento}`,
+      etiqueta: `Quitar ${aDepartamento(filtros.departamento)}`,
       href: enlace({ ...filtros, departamento: "" }, 1),
     });
   }

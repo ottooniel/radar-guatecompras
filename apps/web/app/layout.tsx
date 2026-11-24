@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Bricolage_Grotesque, Public_Sans } from "next/font/google";
 import type { ReactNode } from "react";
 import { Marco } from "@/components/Marco";
-import { leerActualizacion } from "@/lib/consultas";
-import { obtenerPool } from "@/lib/db";
+import { leerActualizacionSegura } from "@/lib/consultas";
 import "./globals.css";
 
 const titulo = Bricolage_Grotesque({
@@ -39,16 +38,10 @@ export default async function RootLayout({
   return (
     <html lang="es" className={`${titulo.variable} ${texto.variable}`}>
       <body>
-        <Marco actualizacion={await actualizacionSegura()}>{children}</Marco>
+        <Marco actualizacion={await leerActualizacionSegura()}>
+          {children}
+        </Marco>
       </body>
     </html>
   );
-}
-
-async function actualizacionSegura(): Promise<string | null> {
-  try {
-    return await leerActualizacion(obtenerPool());
-  } catch {
-    return null;
-  }
 }

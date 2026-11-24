@@ -1,7 +1,6 @@
 import {
   buscarProcesos,
   busquedaAJson,
-  consultaVacia,
   mensajePalabrasVacias,
 } from "@/lib/consultas";
 import { obtenerPool } from "@/lib/db";
@@ -17,21 +16,12 @@ export async function GET(request: Request): Promise<Response> {
     return jsonError(400, leido.error);
   }
   try {
-    const pool = obtenerPool();
-    if (leido.busqueda.q !== null) {
-      const vacia = await consultaVacia(pool, leido.busqueda.q);
-      if (vacia) {
-        return jsonOk(
-          busquedaAJson(
-            { resultados: [], total: 0 },
-            leido.busqueda,
-            mensajePalabrasVacias(leido.busqueda.q),
-          ),
-        );
-      }
-    }
-    const pagina = await buscarProcesos(pool, leido.busqueda);
-    return jsonOk(busquedaAJson(pagina, leido.busqueda));
+    const pagina = await buscarProcesos(obtenerPool(), leido.busqueda);
+    const aviso =
+      pagina.consultaVacia && leido.busqueda.q !== null
+        ? mensajePalabrasVacias(leido.busqueda.q)
+        : null;
+    return jsonOk(busquedaAJson(pagina, leido.busqueda, aviso));
   } catch (error) {
     registrarFallo("GET /api/search", error);
     return jsonError(500, "No se pudo consultar la base");

@@ -3,6 +3,10 @@ import { fileURLToPath } from "node:url";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+}));
 import type { Ficha, ResultadoBusqueda } from "@/lib/consultas";
 import { armarIndicadores } from "@/lib/indicadores";
 import { FichaProceso } from "./FichaProceso";
@@ -76,7 +80,8 @@ it("la portada muestra el buscador, la cita y el monto", () => {
   expect(html).toContain('aria-label="Departamento"');
   expect(html).toContain("Suministro de diésel para generadores");
   expect(html).toContain("Municipalidad de ejemplo");
-  expect(html).toContain("GUATEMALA");
+  expect(html).toContain("Guatemala");
+  expect(html).toContain("Aplicar");
   expect(html).toContain("Vigente");
   expect(html).toContain("Publicado el 10 de noviembre");
   expect(html).toContain("NOG 900000001");
@@ -134,7 +139,7 @@ it("sin resultados ofrece quitar cada filtro", () => {
     />,
   );
   expect(html).toContain("No hay procesos con esos filtros.");
-  expect(html).toContain("Quitar GUATEMALA");
+  expect(html).toContain("Quitar Guatemala");
   expect(html).toContain("Limpiar filtros");
 });
 
@@ -167,6 +172,45 @@ it("marca el umbral sin coincidencia cuando el monto queda afuera", () => {
   expect(html).not.toContain("Sin fecha de cierre publicada");
 });
 
+it("una página fuera de rango enlaza a la última", () => {
+  const html = renderToStaticMarkup(
+    <PaginaBusqueda
+      filtros={filtros}
+      opciones={{
+        departamentos: [],
+        estados: [],
+        modalidades: [],
+        categorias: [],
+      }}
+      resultados={[]}
+      total={25}
+      pagina={50}
+      tamano={20}
+      error={null}
+      aviso={null}
+      actualizacion={null}
+    />,
+  );
+  expect(html).toContain("Esta página no existe");
+  expect(html).toContain("Ir a la página 2");
+  expect(html).toContain("pagina=2");
+  expect(html).not.toContain("No hay procesos con esos filtros.");
+});
+
+it("si hay proveedor pero no monto, no dice que falta la adjudicación", () => {
+  const base = ficha(null);
+  const html = renderToStaticMarkup(
+    <FichaProceso
+      ficha={{
+        ...base,
+        adjudicaciones: [{ ...base.adjudicaciones[0]!, montoGtq: null }],
+      }}
+    />,
+  );
+  expect(html).toContain("Adjudicado, monto no publicado");
+  expect(html).not.toContain("Aún sin adjudicar");
+});
+
 it("el 404 habla de los últimos 5 meses y el pie cita la fuente", () => {
   const perdido = renderToStaticMarkup(
     <NoEncontrado
@@ -183,8 +227,9 @@ it("el 404 habla de los últimos 5 meses y el pie cita la fuente", () => {
   );
   expect(marco).toContain("Radar Guatecompras");
   expect(marco).toContain("Buscar");
-  expect(marco).toContain("Alertas");
-  expect(marco).toContain("Acerca de los datos");
+  expect(marco).toContain("Alertas, próximamente");
+  expect(marco).toContain("Acerca de los datos, próximamente");
+  expect(marco).toContain('aria-current="page"');
   expect(marco).toContain("CC BY 4.0");
   expect(marco).toContain(
     "Los indicadores describen datos publicados y no son una acusación.",

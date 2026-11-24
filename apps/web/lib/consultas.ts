@@ -1,6 +1,8 @@
 import type { Pool, QueryResultRow } from "pg";
+import { cache } from "react";
 import { armarIndicadores, type ProporcionComprador } from "./indicadores";
 import type { BusquedaValida } from "./parametros";
+import { obtenerPool } from "./db";
 
 export interface ResultadoBusqueda {
   nog: string;
@@ -17,6 +19,7 @@ export interface ResultadoBusqueda {
 export interface PaginaResultados {
   resultados: ResultadoBusqueda[];
   total: number;
+  consultaVacia: boolean;
 }
 
 export interface OpcionesFiltro {
@@ -98,11 +101,11 @@ AND (
 )
 AND (
   $6::date IS NULL
-  OR (t.date_published AT TIME ZONE 'America/Guatemala')::date >= $6::date
+  OR t.date_published >= ($6::date::timestamp AT TIME ZONE 'America/Guatemala')
 )
 AND (
   $7::date IS NULL
-  OR (t.date_published AT TIME ZONE 'America/Guatemala')::date <= $7::date
+  OR t.date_published < (($7::date + 1)::timestamp AT TIME ZONE 'America/Guatemala')
 )
 AND (
   $8::boolean IS NOT TRUE
@@ -144,7 +147,12 @@ OFFSET $10::int
 
 const SQL_CONTEO = `
 ${DESDE_CONSULTA}
-SELECT count(*)::int AS total
+SELECT
+  count(*)::int AS total,
+  (
+    SELECT c0.ts IS NOT NULL AND btrim(c0.ts::text) = ''
+    FROM consulta AS c0
+  ) AS vacia
 ${FILTROS}
 `;
 
@@ -219,14 +227,15 @@ export async function buscarProcesos(
   const offset = (busqueda.pagina - 1) * busqueda.limit;
   const [lista, conteo] = await Promise.all([
     db.query<FilaBusqueda>(SQL_LISTADO, [...filtro, busqueda.limit, offset]),
-    db.query<{ total: number }>(SQL_CONTEO, filtro),
+    db.query<{ total: number; vacia: boolean | null }>(SQL_CONTEO, filtro),
   ]);
-  const total = conteo.rows[0]?.total;
-  if (total === undefined) {
+  const fila = conteo.rows[0];
+  if (fila === undefined) {
     throw new Error("No se pudo contar la búsqueda");
   }
   return {
-    total,
+    total: fila.total,
+    consultaVacia: fila.vacia === true,
     resultados: lista.rows.map(mapearResultado),
   };
 }
@@ -234,9 +243,11 @@ export async function buscarProcesos(
 const CACHE_OPCIONES_MS = 10 * 60 * 1000;
 
 let cacheOpciones: { en: number; opciones: OpcionesFiltro } | undefined;
+let opcionesEnCurso: Promise<OpcionesFiltro> | undefined;
 
 export function vaciarCacheOpciones(): void {
   cacheOpciones = undefined;
+  opcionesEnCurso = undefined;
 }
 
 export async function listarOpciones(
@@ -249,9 +260,21 @@ export async function listarOpciones(
   ) {
     return cacheOpciones.opciones;
   }
-  const opciones = await consultarOpciones(db);
-  cacheOpciones = { en: ahora, opciones };
-  return opciones;
+  if (opcionesEnCurso !== undefined) {
+    return opcionesEnCurso;
+  }
+  const trabajo = consultarOpciones(db).then((opciones) => {
+    cacheOpciones = { en: ahora, opciones };
+    return opciones;
+  });
+  opcionesEnCurso = trabajo;
+  try {
+    return await trabajo;
+  } finally {
+    if (opcionesEnCurso === trabajo) {
+      opcionesEnCurso = undefined;
+    }
+  }
 }
 
 async function consultarOpciones(db: Pool): Promise<OpcionesFiltro> {
@@ -262,15 +285,6 @@ async function consultarOpciones(db: Pool): Promise<OpcionesFiltro> {
     distintos(db, "category"),
   ]);
   return { departamentos, estados, modalidades, categorias };
-}
-
-const SQL_TSQUERY_VACIA = `
-  SELECT btrim(websearch_to_tsquery('spanish', unaccent($1))::text) = '' AS vacia
-`;
-
-export async function consultaVacia(db: Pool, q: string): Promise<boolean> {
-  const resultado = await db.query<{ vacia: boolean }>(SQL_TSQUERY_VACIA, [q]);
-  return resultado.rows[0]?.vacia === true;
 }
 
 export function mensajePalabrasVacias(q: string): string {
@@ -318,6 +332,16 @@ export async function obtenerFicha(
     }),
   };
 }
+
+export const leerActualizacionSegura = cache(
+  async (): Promise<string | null> => {
+    try {
+      return await leerActualizacion(obtenerPool());
+    } catch {
+      return null;
+    }
+  },
+);
 
 export async function leerActualizacion(db: Pool): Promise<string | null> {
   const resultado = await db.query<{ finished_at: Date | string | null }>(`

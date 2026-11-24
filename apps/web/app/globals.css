@@ -145,9 +145,15 @@ a:hover {
 }
 
 .menu a,
-.menu span {
+.proximamente span {
   color: var(--secundario);
   text-decoration: none;
+}
+
+.proximamente {
+  display: flex;
+  gap: 1rem;
+  margin: 0;
 }
 
 .menu a[aria-current="page"],
@@ -228,6 +234,7 @@ a:hover {
 
 .buscador button,
 .ver-procesos,
+.aplicar,
 .boton-nog,
 .error-pagina button {
   border: 0;
@@ -259,6 +266,12 @@ a:hover {
 .hoja-cabeza,
 .ver-procesos {
   display: none;
+}
+
+.aplicar {
+  border-radius: 999px;
+  min-height: 38px;
+  padding: 0 0.95rem;
 }
 
 .filtros {
@@ -845,10 +858,22 @@ th {
     grid-template-columns: 1fr;
   }
 
-  .datos-clave,
-  .pares {
+  .aplicar {
+    display: none;
+  }
+
+  .datos-clave {
     display: grid;
     grid-template-columns: 1fr 1fr;
+  }
+
+  .pares {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .pares dd {
+    margin-bottom: 0.55rem;
   }
 
   .monto-grande {
