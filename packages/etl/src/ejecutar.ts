@@ -11,6 +11,7 @@ import {
   descargarSha,
   descargarZip,
   extraerJsonDelZip,
+  MesNoPublicado,
   sha256Archivo,
 } from "./descarga.js";
 import { guardarManifest, leerManifest } from "./manifest.js";
@@ -55,7 +56,15 @@ export async function ejecutarEtl(
   const reloj = Date.now();
 
   for (const mes of meses) {
-    const shaRemoto = await fuente.descargarSha(mes);
+    let shaRemoto: string;
+    try {
+      shaRemoto = await fuente.descargarSha(mes);
+    } catch (error) {
+      if (dejarPendiente(mes, error, omitidos, log)) {
+        continue;
+      }
+      throw error;
+    }
     if (manifest.meses[mes.clave]?.sha256 === shaRemoto) {
       omitidos.push(mes.clave);
       log(`${mes.clave} sin cambios, SHA igual`);
@@ -70,7 +79,14 @@ export async function ejecutarEtl(
     try {
       const zipPath = join(tmp, "paquete.zip");
       const jsonPath = join(tmp, "paquete.json");
-      await fuente.descargarZip(mes, zipPath);
+      try {
+        await fuente.descargarZip(mes, zipPath);
+      } catch (error) {
+        if (dejarPendiente(mes, error, omitidos, log)) {
+          continue;
+        }
+        throw error;
+      }
       await extraerJsonDelZip(zipPath, jsonPath);
       const shaJson = await sha256Archivo(jsonPath);
       if (shaJson !== shaRemoto) {
@@ -163,6 +179,31 @@ async function publicarDirectorio(
     throw error;
   }
   await rm(viejo, { recursive: true, force: true });
+}
+
+/**
+ * El mes en curso (o uno posterior) a veces aún no tiene archivo. Se omite.
+ * Un mes ya vencido con el mismo estado sigue siendo un error.
+ */
+function dejarPendiente(
+  mes: Mes,
+  error: unknown,
+  omitidos: string[],
+  log: (mensaje: string) => void,
+): boolean {
+  if (!(error instanceof MesNoPublicado) || !esMesActualOPosterior(mes)) {
+    return false;
+  }
+  omitidos.push(mes.clave);
+  log(`Aviso: ${mes.clave} aún no publicado, se omite`);
+  return true;
+}
+
+function esMesActualOPosterior(mes: Mes): boolean {
+  const hoy = new Date();
+  const indiceMes = mes.anio * 12 + mes.mes;
+  const indiceHoy = hoy.getUTCFullYear() * 12 + hoy.getUTCMonth() + 1;
+  return indiceMes >= indiceHoy;
 }
 
 function reporteDe(

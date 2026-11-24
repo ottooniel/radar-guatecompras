@@ -1,8 +1,8 @@
 import type { Client } from "pg";
 import { enTransaccion } from "./postgres.js";
 
-/** Tope de `source_month` distintos que se conservan en Postgres. */
-export const MESES_CONSERVADOS = 12;
+/** Tope de `source_month` distintos. 5 por el límite de 500 MB del plan gratis de Supabase. */
+export const MESES_CONSERVADOS = 5;
 
 export interface ResultadoPoda {
   mesesBorrados: string[];

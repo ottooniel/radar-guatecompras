@@ -11,7 +11,7 @@ import {
   aplicarMigraciones,
   directorioMigracionesPorDefecto,
 } from "./migrar.js";
-import { podarYActualizarBuyers } from "./poda.js";
+import { MESES_CONSERVADOS, podarYActualizarBuyers } from "./poda.js";
 import { crearCliente } from "./postgres.js";
 import { directorioOcds, rutaManifest } from "./rutas.js";
 
@@ -291,8 +291,8 @@ describe.skipIf(databaseUrl === undefined)("carga contra Postgres", () => {
     ]);
   });
 
-  it("conserva 12 meses y borra el más viejo con sus ítems", async () => {
-    for (let mes = 1; mes <= 12; mes += 1) {
+  it("conserva la retención y borra el mes más viejo con sus ítems", async () => {
+    for (let mes = 1; mes <= MESES_CONSERVADOS; mes += 1) {
       const clave = `2014-${String(mes).padStart(2, "0")}`;
       const nog = 9100000000100 + mes;
       await db().query(
@@ -322,7 +322,7 @@ describe.skipIf(databaseUrl === undefined)("carga contra Postgres", () => {
       "SELECT DISTINCT source_month FROM tenders ORDER BY source_month",
     );
     const meses = queda.rows.map((fila) => fila.source_month);
-    expect(meses).toHaveLength(12);
+    expect(meses).toHaveLength(MESES_CONSERVADOS);
     expect(meses[0]).toBe("2014-02");
     expect(meses).toContain("2026-11");
     expect(meses).not.toContain("2014-01");
