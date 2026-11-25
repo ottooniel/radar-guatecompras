@@ -56,6 +56,24 @@ export function aTitulo(texto: string | null | undefined): string {
   return restaurarCodigos(limpio, actual);
 }
 
+/**
+ * Proveedor de Guatecompras: «APELLIDO,APELLIDO,,NOMBRE,NOMBRE».
+ * Se parten las comas, se botan los vacíos y cada parte pasa por aTitulo.
+ */
+export function aProveedor(texto: string | null | undefined): string {
+  if (texto === null || texto === undefined || texto.trim() === "") {
+    return "";
+  }
+  if (!texto.includes(",")) {
+    return aTitulo(texto);
+  }
+  return texto
+    .split(",")
+    .map((parte) => aTitulo(parte))
+    .filter((parte) => parte !== "")
+    .join(" ");
+}
+
 /** No repite el departamento si el nombre del comprador ya lo trae. */
 export function conDepartamento(
   comprador: string,

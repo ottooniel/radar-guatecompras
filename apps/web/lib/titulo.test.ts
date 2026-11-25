@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { aDepartamento, aTitulo, conDepartamento } from "./titulo";
+import { aDepartamento, aProveedor, aTitulo, conDepartamento } from "./titulo";
 
 it("pasa el título a minúsculas y mayúscula de oración", () => {
   expect(aTitulo("ADQUISICIÓN DE DIÉSEL PARA GENERADORES.")).toBe(
@@ -51,6 +51,13 @@ it("conserva siglas y números ordinales", () => {
   expect(aTitulo("1ER. TRIMESTRE DEL SUMINISTRO")).toBe(
     "1er. Trimestre del suministro",
   );
+});
+
+it("separa el proveedor que viene con comas", () => {
+  expect(aProveedor("RODRIGUEZ,ESTRADA,,ENRIQUE,EUGENIO")).toBe(
+    "Rodriguez Estrada Enrique Eugenio",
+  );
+  expect(aProveedor("Proveedor Uno")).toBe("Proveedor uno");
 });
 
 it("deja vacío un texto en blanco", () => {

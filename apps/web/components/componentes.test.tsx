@@ -147,7 +147,10 @@ it("la ficha muestra el monto, el cierre ausente y un solo aviso", () => {
   const html = renderToStaticMarkup(<FichaProceso ficha={ficha(null)} />);
   expect(html).toContain("Sin fecha de cierre publicada");
   expect(html).toContain("15101505");
-  expect(html).toContain("Proveedor Uno");
+  expect(html).toContain("Enfriador de combustible");
+  expect(html).toContain("Proveedor uno");
+  expect(html).toContain('class="medidor"');
+  expect(html).not.toContain('class="barra"');
   expect(html).toContain("Q89,000.00");
   expect(html).toContain("Presente");
   expect(html).toContain("NOG 900000001 Copiar");
@@ -272,7 +275,7 @@ function ficha(fechaCierre: string | null): Ficha {
     items: [
       {
         id: "1",
-        descripcion: "Diesel",
+        descripcion: "ENFRIADOR DE COMBUSTIBLE",
         unspsc: "15101505",
         cantidad: "100.5000",
         unidad: "Galón",

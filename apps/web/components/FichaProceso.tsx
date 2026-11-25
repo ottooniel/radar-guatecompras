@@ -9,7 +9,7 @@ import {
   sumarMontos,
   urlGuatecompras,
 } from "@/lib/formato";
-import { aDepartamento, aTitulo } from "@/lib/titulo";
+import { aDepartamento, aProveedor, aTitulo } from "@/lib/titulo";
 import { CopiarNog } from "./CopiarNog";
 import { PuntoEstado } from "./Estado";
 
@@ -94,7 +94,7 @@ export function FichaProceso({ ficha }: { ficha: Ficha }) {
                   <tbody>
                     {ficha.items.map((item, indice) => (
                       <tr key={`${item.id ?? "item"}-${indice}`}>
-                        <td>{mostrado(item.descripcion)}</td>
+                        <td>{mostrado(aTitulo(item.descripcion))}</td>
                         <td className="nog">{mostrado(item.unspsc)}</td>
                         <td>
                           {formatoCantidad(item.cantidad)} {item.unidad ?? ""}
@@ -121,7 +121,7 @@ export function FichaProceso({ ficha }: { ficha: Ficha }) {
                   <tbody>
                     {ficha.adjudicaciones.map((adjudicacion, indice) => (
                       <tr key={`${adjudicacion.id ?? "adj"}-${indice}`}>
-                        <td>{mostrado(adjudicacion.proveedor)}</td>
+                        <td>{mostrado(aProveedor(adjudicacion.proveedor))}</td>
                         <td className="nog">
                           {adjudicacion.montoGtq === null
                             ? "No publicado"
@@ -174,7 +174,7 @@ export function FichaProceso({ ficha }: { ficha: Ficha }) {
                   <p>{indicador.texto}</p>
                   {indicador.id === "compra_directa" && porcentaje !== null && (
                     <div
-                      className="barra"
+                      className="medidor"
                       role="img"
                       aria-label={`${porcentaje} por ciento de compra directa`}
                     >

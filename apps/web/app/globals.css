@@ -689,7 +689,7 @@ th {
   margin: 0.25rem 0 0;
 }
 
-.barra {
+.medidor {
   height: 4px;
   margin-top: 0.45rem;
   border-radius: 999px;
@@ -697,7 +697,7 @@ th {
   overflow: hidden;
 }
 
-.barra span {
+.medidor span {
   display: block;
   height: 100%;
   background: var(--acento);
@@ -745,6 +745,16 @@ th {
 }
 
 @media (max-width: 760px) {
+  .barra-interior {
+    flex-wrap: wrap;
+    row-gap: 0.15rem;
+  }
+
+  .proximamente {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
   .circuito {
     display: none;
   }
